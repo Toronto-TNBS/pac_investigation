@@ -308,18 +308,15 @@ smooth_factor = 0.01
 #Filter bursts only
 #Filter non-bursts only 
 
-
-def smooth_data(in_data, fs):
-    winWidth = int(0.01*fs*2)
-    smoothed_data01 = np.pad(in_data, winWidth, 'constant', constant_values = [0]) 
-    smoothed_data01 = np.asarray(pandas.Series(np.abs(smoothed_data01)).rolling(center = True, window = int(smooth_factor*fs)).mean())
-    return smoothed_data01[winWidth:-winWidth]
-
 def preprocess_data(in_data, fs):
     in_data = np.copy(in_data)
     
     if (burst_filter == "spike_transform"):
         out_data = transform_spike_data(in_data, fs)
+    elif(burst_filter == "burst_transform"):
+        out_data = transform_spike_data2(in_data, fs)
+    elif(burst_filter == "silence_transform"):
+        out_data = transform_spike_data3(in_data, fs)
     elif(burst_filter == "hilbert"):
         out_data = np.abs(scipy.signal.hilbert(in_data))
     elif(burst_filter == "basic"):
@@ -343,7 +340,7 @@ def plot_hf_lf_components(data, fs_data01, f_min = 5, f_max = 45, visualize = Tr
     end_bin = np.argmin(np.abs(bins - f_max))
     
     if (visualize):
-        (_, axes) = plt.subplots(2, 3)
+        (_, axes) = plt.subplots(2, 2)
         t_data01 = np.arange(1, len(hpf_data01)+1, 1)/fs_data01
         axes[0, 0].plot(t_data01, hpf_data01)
         axes[0, 0].plot(t_data01, smoothed_data01)
@@ -352,7 +349,11 @@ def plot_hf_lf_components(data, fs_data01, f_min = 5, f_max = 45, visualize = Tr
         axes[0, 1].semilogy(bins[start_bin:end_bin], smoothed_hpf_psd[start_bin:end_bin])
         axes[1, 1].semilogy(bins[start_bin:end_bin], bpf_psd[start_bin:end_bin])
         
+        axes[0, 0].set_title("%s: time domain" % (burst_filter,))
+        axes[0, 1].set_title("%s: frequency domain" % (burst_filter,))
+        
         plt.figure()
+        plt.title("Mode %s" % (burst_filter,))
         plt.plot(t_data01, hpf_data01)
         plt.plot(t_data01, smoothed_data01)
 
@@ -453,6 +454,60 @@ def transform_spike_data(data, fs):
     
     return interp_data
 
+def transform_spike_data2(in_data, fs):
+#    return np.abs(scipy.signal.hilbert(in_data))
+    
+    binarized_data = np.zeros(in_data.shape)
+        
+    (peaks, _) = scipy.signal.find_peaks(np.abs(in_data), height = 1.1)
+    
+    samples_between_instantaneous_spikes = len(in_data)/len(peaks)
+    max_dist_thresh = samples_between_instantaneous_spikes * 2 / 3
+        
+    last_peak = peaks[0]
+    burst_start = peaks[0]
+    for peak in peaks[1:]:
+        if ((peak - last_peak) > max_dist_thresh):
+            binarized_data[burst_start:last_peak] = 1#np.mean(data[burst_start:last_peak])
+            last_peak = peak
+            burst_start = peak
+        
+        last_peak = peak
+        
+    out_data = np.zeros(in_data.shape)
+    out_data[np.argwhere(binarized_data == 1).squeeze()] = in_data[np.argwhere(binarized_data == 1).squeeze()]
+    
+    out_data = np.abs(scipy.signal.hilbert(out_data))
+    
+    return out_data
+
+def transform_spike_data3(in_data, fs):
+#    return np.abs(scipy.signal.hilbert(in_data))
+    
+    binarized_data = np.zeros(in_data.shape)
+        
+    (peaks, _) = scipy.signal.find_peaks(np.abs(in_data), height = 1.1)
+    
+    samples_between_instantaneous_spikes = len(in_data)/len(peaks)
+    max_dist_thresh = samples_between_instantaneous_spikes * 2 / 3
+        
+    last_peak = peaks[0]
+    burst_start = peaks[0]
+    for peak in peaks[1:]:
+        if ((peak - last_peak) > max_dist_thresh):
+            binarized_data[burst_start:last_peak] = 1#np.mean(data[burst_start:last_peak])
+            last_peak = peak
+            burst_start = peak
+        
+        last_peak = peak
+        
+    out_data = np.zeros(in_data.shape)
+    out_data[np.argwhere(binarized_data == 0).squeeze()] = in_data[np.argwhere(binarized_data == 0).squeeze()]
+    
+    out_data = np.abs(scipy.signal.hilbert(out_data))
+    
+    return out_data
+
 def calculate_dmi(data, fs_data01, visualize = True):
     high_freq_component = ff.fir(np.asarray(data), 300, None, 1, fs_data01)
     low_freq_component = ff.fir(np.asarray(data), filt_low, filt_high, 0.1, fs_data01)
@@ -464,11 +519,11 @@ def calculate_dmi(data, fs_data01, visualize = True):
 
     if (visualize):
         (fig, axes) = plt.subplots(2, 1)
-        axes[0].set_title("original data, score: %.2f" % (score,))
+        axes[0].set_title("%s: original data, score: %.2f" % (burst_filter, score,))
         axes[0].plot(best_fit)
         axes[0].plot(amp_signal)
         
-        axes[1].set_title("smoothed data, score: %.2f" % (smoothed_score,))
+        axes[1].set_title("%s: smoothed data, score: %.2f" % (burst_filter, smoothed_score,))
         axes[1].plot(smoothed_best_fit)
         axes[1].plot(smoothed_amp_signal)
         
@@ -506,21 +561,6 @@ def calculate_spectograms(data, fs, visualize = True):
     f_max = 45
     f_window_width = 2
     f_window_step_sz = 1
-    
-    #===========================================================================
-    # for start_idx in np.arange(0, len(data) - window_width, window_step_sz):
-    #     calculate_spectograms_inner(start_idx, data, window_width, fs, f_min, f_max, f_window_width, f_window_step_sz)
-    #===========================================================================
-    
-    #===========================================================================
-    # if (os.path.exists("test.npy")):
-    #     tmp = np.load("test.npy", allow_pickle = True)
-    # else:
-    #     tmp = np.asarray(tp.run(8, calculate_spectograms_inner,
-    #                             [(data[start_idx:(start_idx + window_width)], window_width, fs, f_min, f_max, f_window_width, f_window_step_sz, start_idx) for start_idx in np.arange(0, len(data) - window_width, window_step_sz)],
-    #                             max_time = None, delete_data = True))   
-    #     np.save("test.npy", tmp, allow_pickle = True)
-    #===========================================================================
         
     tmp = np.asarray(tp.run(thread_cnt, calculate_spectograms_inner,
                             [(data[start_idx:(start_idx + window_width)], window_width, fs, f_min, f_max, f_window_width, f_window_step_sz, start_idx) for start_idx in np.arange(0, len(data) - window_width, window_step_sz)],
@@ -555,9 +595,9 @@ def calculate_spectograms(data, fs, visualize = True):
         #=======================================================================
         axes[2].imshow(dmi_scores, vmin = 0.75, vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
         
-        axes[0].set_title("low frequency psd")
-        axes[1].set_title("high frequency psd")
-        axes[2].set_title("PAC: low freq. - high freq")
+        axes[0].set_title("%s: low frequency psd" % (burst_filter,))
+        axes[1].set_title("%s: high frequency psd" % (burst_filter,))
+        axes[2].set_title("%s: PAC: low freq. - high freq" % (burst_filter,))
         
         for ax in axes:
             ax.set_yticks([0, 4, 9, 14, 19, 24, 29, 34, 39])
@@ -579,8 +619,12 @@ def main(all_data, hdr_info, overwrite = False):
     print("Terminated successfully")
 
 #burst_filter = "hilbert"
-burst_filter = "spike_transform"
+#burst_filter = "spike_transform"
+#burst_filter = "spike_transform"
 #burst_filter = "basic"
+
+#burst_filter = "burst_transform"
+burst_filter = "silence_transform"
 
 main(data01, hdr01, False)
 
