@@ -61,7 +61,7 @@ def plot_hf_lf_components(data, fs_data01, filt_low, filt_high, f_min = 8, f_max
         hpf_data01 = ff.fir(np.asarray(data), 300, None, 1, fs_data01)
         
         # spike signal smooth-transform
-        (burst_hf_data, non_burst_hf_data) = preprocess_data(hpf_data01, fs_data01, peak_spread, peak_thresh)
+        (burst_hf_data, non_burst_hf_data) = preprocess_data(hpf_data01, fs_data01, peak_spread, peak_thresh)        
             
         (bins, lpf_psd) = scipy.signal.welch(lpf_data01, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
         (bins, bpf_psd) = scipy.signal.welch(bpf_data01, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
@@ -169,11 +169,11 @@ def calculate_spectograms_inner(data, window_width, fs,
     
        
     loc_hf_data = ff.fir(np.copy(data), 300, None, filter_step_width, fs)
-    loc_lf_data = ff.fir(np.copy(data), filt_low, filt_high, filter_step_width, fs)
+    #loc_lf_data = ff.fir(np.copy(data), filt_low, filt_high, filter_step_width, fs)
     
     (loc_burst_hf_data, loc_non_burst_hf_data) = preprocess_data(loc_hf_data, fs, peak_spread, peak_thresh)
 
-    (bins, loc_lf_psd) = scipy.signal.welch(loc_lf_data, fs, window = "hann", nperseg = fs, noverlap = int(fs/2), nfft = fs, detrend = False, return_onesided = True)
+    (bins, loc_lf_psd) = scipy.signal.welch(data, fs, window = "hann", nperseg = fs, noverlap = int(fs/2), nfft = fs, detrend = False, return_onesided = True)
     (_, loc_burst_hf_psd) = scipy.signal.welch(loc_burst_hf_data, fs, window = "hann", nperseg = fs, noverlap = int(fs/2), nfft = fs, detrend = False, return_onesided = True)
     (_, loc_non_burst_hf_psd) = scipy.signal.welch(loc_non_burst_hf_data, fs, window = "hann", nperseg = fs, noverlap = int(fs/2), nfft = fs, detrend = False, return_onesided = True)
     min_f_bin_idx = np.argmin(np.abs(bins - f_min))
@@ -183,6 +183,7 @@ def calculate_spectograms_inner(data, window_width, fs,
     loc_non_burst_dmi_scores = list()
     for f_idx in np.arange(f_min, f_max, f_window_step_sz):
         loc_dmi_lf_data = ff.fir(np.copy(data), f_idx - f_window_width/2, f_idx + f_window_width/2, filter_step_width, fs)
+        
         (loc_dmi_score, _, _) = dmi.run(loc_dmi_lf_data, loc_burst_hf_data, 10, 1)
         loc_burst_dmi_scores.append(loc_dmi_score)
         
@@ -274,8 +275,10 @@ def main(overwrite = True):
     in_path = "../../../../data/data_for_python/"
     out_path = "../../../../results/"
     for (file_idx, file) in enumerate(meta_data["file"]):
-        if (file != "2623-s3-666"):
-            continue
+        #=======================================================================
+        # if (file != "2626-s4-568-b"):
+        #     continue
+        #=======================================================================
         
         if (file == "2626-s2-557" or file == "2623-s4-280"):
             continue
@@ -290,7 +293,7 @@ def main(overwrite = True):
     
         fs_data01 = int(file_hdr[20]['fs'])
             
-        plot_hf_lf_components(file_data[20], fs_data01, filt_low, filt_high, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file, overwrite = overwrite)
+        #plot_hf_lf_components(file_data[20], fs_data01, filt_low, filt_high, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file, overwrite = overwrite)
         #calculate_dmi(file_data[20], fs_data01, filt_low, filt_high, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file, overwrite = overwrite)
         calculate_spectograms(file_data[20], fs_data01, filt_low, filt_high, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file, overwrite = overwrite)
         
