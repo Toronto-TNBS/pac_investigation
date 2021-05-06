@@ -51,7 +51,7 @@ def transform_non_burst(in_data, fs, filter_f_min, filter_f_max, peak_spread, pe
     
     return out_data
 
-def plot_hf_lf_components(data, fs_data01, filt_low, filt_high, f_min = 8, f_max = 45, peak_spread = 1.5, peak_thresh = 1.1, 
+def plot_hf_lf_components(data, fs_data01, filt_low, filt_high, f_min = 2, f_max = 10, peak_spread = 1.5, peak_thresh = 1.1, 
                           visualize = True, outpath = None, file = None, overwrite = True):
     
     if (overwrite or os.path.exists(outpath + "data/1/" + file + ".pkl") == False):
@@ -184,7 +184,10 @@ def calculate_spectograms_inner(data, window_width, fs,
     for f_idx in np.arange(f_min, f_max, f_window_step_sz):
         loc_dmi_lf_data = ff.fir(np.copy(data), f_idx - f_window_width/2, f_idx + f_window_width/2, filter_step_width, fs)
         
-        (loc_dmi_score, _, _) = dmi.run(loc_dmi_lf_data, loc_burst_hf_data, 10, 1)
+        if ((loc_burst_hf_data == 0).all()):
+            loc_dmi_score = 0
+        else:
+            (loc_dmi_score, _, _) = dmi.run(loc_dmi_lf_data, loc_burst_hf_data, 10, 1)
         loc_burst_dmi_scores.append(loc_dmi_score)
         
         loc_dmi_lf_data = ff.fir(np.copy(data), f_idx - f_window_width/2, f_idx + f_window_width/2, filter_step_width, fs)
@@ -201,8 +204,8 @@ def calculate_spectograms(data, fs, filt_low, filt_high, peak_spread, peak_thres
         window_width = fs
         window_step_sz = int(fs/2)
         
-        f_min = 5
-        f_max = 45
+        f_min = 2
+        f_max = 11
         f_window_width = 2
         f_window_step_sz = 1
             
@@ -263,25 +266,27 @@ def calculate_spectograms(data, fs, filt_low, filt_high, peak_spread, peak_thres
         axes[2, 1].set_title("non burst: PAC: low freq. - high freq")
         
         for ax in axes.reshape(-1):
-            ax.set_yticks([0, 4, 9, 14, 19, 24, 29, 34, 39])
-            ax.set_yticklabels(([5, 10, 15, 20, 25, 30, 35, 40, 45][::-1]))
+            ax.set_yticks([0,1, 2, 3, 4, 5, 6, 7, 8])
+            ax.set_yticklabels(([2, 3, 4, 5, 6, 7, 8, 9,10][::-1]))
         
         fig.set_tight_layout(tight = True)
         
         fig.savefig(outpath + "/img/3/" + file + ".png")
         
-def main(overwrite = True):
-    meta_data = methods.data_io.read_ods.read_file("../../../../data/meta.ods", "beta")
-    in_path = "../../../../data/data_for_python/"
-    out_path = "../../../../results/"
+def main(overwrite = True, mode = "tremor"):
+    meta_data = methods.data_io.read_ods.read_file("../../../../data/meta.ods", mode)
+    in_path = "../../../../data/"+mode+"/data_for_python/"
+    out_path = "../../../../results/"+mode+"/"
     for (file_idx, file) in enumerate(meta_data["file"]):
         #=======================================================================
-        # if (file != "2626-s4-568-b"):
+        # if (file != "664-cell1-c-stim-on"):
         #     continue
         #=======================================================================
         
-        if (file == "2626-s2-557" or file == "2623-s4-280"):
-            continue
+        #=======================================================================
+        # if (file == "664-cell1-c-stim-on" or file == "2623-s4-280"):
+        #     continue
+        #=======================================================================
         
         print(file)
         
@@ -292,7 +297,7 @@ def main(overwrite = True):
         filt_high = meta_data["fmax"][file_idx]
     
         fs_data01 = int(file_hdr[20]['fs'])
-            
+         
         #plot_hf_lf_components(file_data[20], fs_data01, filt_low, filt_high, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file, overwrite = overwrite)
         #calculate_dmi(file_data[20], fs_data01, filt_low, filt_high, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file, overwrite = overwrite)
         calculate_spectograms(file_data[20], fs_data01, filt_low, filt_high, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file, overwrite = overwrite)

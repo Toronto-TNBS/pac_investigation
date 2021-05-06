@@ -20,7 +20,6 @@ def main(pathMetaFile, basePath, poolSz = 4, overwrite = False):
 
     metaFile = pyexcel_ods.read_data(pathMetaFile)
     metaFile = metaFile[list(metaFile.keys())[0]]
-    folderIdx = metaFile[0].index("folder")
     fileIdx = metaFile[0].index("file")
 
     maxRow = 0
@@ -28,8 +27,8 @@ def main(pathMetaFile, basePath, poolSz = 4, overwrite = False):
         if (len(metaFile[rowIdx]) != 0):
             maxRow += 1
 
-    for rowIdx in range(1, maxRow + 1):
-        __mainInner(basePath, metaFile[rowIdx][folderIdx], metaFile[rowIdx][fileIdx], overwrite)
+    for rowIdx in range(1, maxRow + 1):        
+        __mainInner(basePath, metaFile[rowIdx][fileIdx], overwrite)
 
 #===============================================================================
 #     pool = multiprocessing.Pool(poolSz)
@@ -40,80 +39,36 @@ def main(pathMetaFile, basePath, poolSz = 4, overwrite = False):
 #     pool.join()
 #===============================================================================
     
-    print("Terminated successfully")
 
-def __mainInner(basePath, folder, file, overwrite):
-#    if (folder[-1] != "/"):
-#        folder += "/"
+import neo
+import matplotlib.pyplot as plt
 
-    filePath = basePath + folder + "\\" + file + ".txt"
+def __mainInner(basePath, file, overwrite):
+    filePath = basePath + file + ".smr"
     
-    if (os.path.exists(filePath + "_conv_data.pkl") and os.path.exists(filePath + "_conv_hdr.pkl") and overwrite == False):
+    if (os.path.exists(filePath + "_conv_hdr.pkl") == True):
         return
     
-    print("Processing file %s" % (filePath, ))
-    (hdr, data) = parseFile(filePath)
+    print(file)
     
-    pickle.dump(hdr, open(filePath + "_conv_hdr.pkl", "wb"))
-    pickle.dump(data, open(filePath + "_conv_data.pkl", "wb"))
+    file = neo.Spike2IO(filePath)
     
-def parseFile(filePath):
-    file = open(filePath, "r")
+    fs = file.get_signal_sampling_rate([0])
+    raw_data = np.asarray(file.read(lazy=False)[0].segments[0].analogsignals[0])[:, 0]
     
-    while (True):
-        line = file.readline()
-        if (line == '"SUMMARY"\n'):
-            break
-        
-    hdr     = dict()
-    data    = dict()
-        
-    while (True):
-        line = file.readline()
-        if (line == "\n"):
-            break
-
-        line = line.split("\t")
-        
-        idx = int(line[0].replace("\"", "").replace("\n",""))
-        sigType = line[1].replace("\"", "").replace("\n","")
-        name = line[2].replace("\"", "").replace("\n","")
-        unknownAttribute1 = line[3].replace("\"", "").replace("\n","")
-        fs = float(line[5].replace("\"", "").replace("\n",""))
-        unknownAttribute2 = line[6].replace("\"", "").replace("\n","")
-        unknownAttribute3 = line[7].replace("\"", "").replace("\n","")
-        
-        hdr[idx]  = {"type" : sigType, "name" : name, "unknownAttribute1" : unknownAttribute1, "fs" : fs, "unknownAttribute2" : unknownAttribute2, "unknownAttribute3" : unknownAttribute3}
-        data[idx] = list()
+    #plt.plot(raw_data)
+    #plt.show(block = True)
     
-    while(True):
-        while(True):
-            line = file.readline()
-            if ("CHANNEL" in line):
-                break
-            
-            if(len(line) == 0):
-                file.close()
-                return (hdr, data)
+    hdr = {20 : {"fs" : fs}}
+    data = {20 : raw_data}
+    
+    filePath = filePath[:filePath.index(".smr")]
+    pickle.dump(hdr, open(filePath + ".txt_conv_hdr.pkl", "wb"))
+    pickle.dump(data, open(filePath + ".txt_conv_data.pkl", "wb"))
 
-        idx = int(line.split("\t")[1].replace("\"", "").replace("\n",""))
-                
-        while(True):
-            line = file.readline()
-            if ("START" in line):
-                break
-        
-        while(True):
-            line = file.readline()
-            
-            if (line == "\n"):
-                break
-            
-            data[idx].append(float(line.replace("\"", "").replace("\n","")))
-
-
-
-main("D:\\Users\\lukam\\Desktop\\PAC_spike_lfp\\DATA\\data_for_python\\meta_data_PAC_test.ods", "D:\\Users\\lukam\\Desktop\\PAC_spike_lfp\\DATA\\", 4, False)
+main("/home/voodoocode/Documents/professional/UHN/pac_investigation/data/beta/new/meta.ods",
+     "/home/voodoocode/Documents/professional/UHN/pac_investigation/data/beta/new/", 4, False)
+print("Terminated successfully")
 
 
 

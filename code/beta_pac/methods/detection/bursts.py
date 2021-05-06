@@ -21,6 +21,9 @@ def identify_peaks(in_data, fs, filter_f_min = 70, filter_f_max = None, spread =
         
     (peaks, _) = scipy.signal.find_peaks(np.abs(in_data_mod), height = peak_thresh)
     
+    if (len(peaks) == 0):
+        return np.zeros(in_data.shape)
+    
     samples_between_instantaneous_spikes = len(in_data_mod)/len(peaks)
     max_dist_thresh = samples_between_instantaneous_spikes * (1/spread)
         
