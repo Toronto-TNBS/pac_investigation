@@ -255,47 +255,80 @@ def calculate_spectograms(data, fs, filt_low, filt_high, peak_spread, peak_thres
         dmi_burst_scores = np.transpose(dmi_burst_scores)
         dmi_non_burst_scores = np.transpose(dmi_non_burst_scores)
         
-        vmin_lf = np.min([np.min(lf_psd),])
-        vmax_lf = np.max([np.max(lf_psd),])
-        vmin_hf = np.min([np.min(hf_burst_psd), np.min(hf_non_burst_psd)])
-        vmax_hf = np.max([np.max(hf_burst_psd), np.max(hf_non_burst_psd)])
+        a = 1.7
+        lf_psd = (np.power(a, np.log(lf_psd)) - 1)/(a-1)
+        hf_burst_psd= (np.power(a, np.log(hf_burst_psd)) - 1)/(a-1)
+        hf_non_burst_psd= (np.power(a, np.log(hf_non_burst_psd)) - 1)/(a-1)
         
         a = 20
-        
         dmi_burst_scores = (np.power(a, dmi_burst_scores)-1)/(a - 1)
         dmi_non_burst_scores = (np.power(a, dmi_non_burst_scores)-1)/(a - 1)
         
-        (fig, axes) = plt.subplots(3, 2)
-        axes[0, 0].imshow(lf_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = vmin_lf, vmax = vmax_lf)
-        axes[0, 1].imshow(lf_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = vmin_lf, vmax = vmax_lf)
-        axes[1, 0].imshow(hf_burst_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = vmin_hf, vmax = vmax_hf)
-        axes[1, 1].imshow(hf_non_burst_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = vmin_hf, vmax = vmax_hf)
-        axes[2, 0].imshow(dmi_burst_scores, vmin = 0.0, vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
-        axes[2, 1].imshow(dmi_non_burst_scores, vmin = 0., vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
-
         #=======================================================================
-        # dmi_burst_scores = skimage.morphology.closing(dmi_burst_scores, skimage.morphology.square(4))
-        # dmi_burst_scores = skimage.filters.gaussian(dmi_burst_scores, [1, .5])
-        # mask = np.zeros(dmi_burst_scores.shape)
-        # mask[dmi_burst_scores > 0.6] = 1
-        # dmi_burst_scores = mask * dmi_burst_scores
-        # ent_val_burst = len(np.argwhere(dmi_burst_scores > 0.6).reshape(-1))/len(dmi_burst_scores.reshape(-1))
+        # vmin_lf = np.min([np.min(lf_psd),])
+        # vmax_lf = np.max([np.max(lf_psd),])
+        # vmin_hf = np.min([np.min(hf_burst_psd), np.min(hf_non_burst_psd)])
+        # vmax_hf = np.max([np.max(hf_burst_psd), np.max(hf_non_burst_psd)])
         #=======================================================================
-        ent_val_burst = analysis.beta.calculate_image_entropy.calc_entropy(dmi_burst_scores)
-
-        #=======================================================================
-        # dmi_non_burst_scores = skimage.morphology.closing(dmi_non_burst_scores, skimage.morphology.square(4))
-        # dmi_non_burst_scores = skimage.filters.gaussian(dmi_non_burst_scores, [1.5, .5])
-        # mask = np.zeros(dmi_non_burst_scores.shape)
-        # mask[dmi_non_burst_scores > 0.6] = 1
-        # dmi_non_burst_scores = mask * dmi_non_burst_scores
-        # ent_val_non_burst = len(np.argwhere(dmi_non_burst_scores > 0.6).reshape(-1))/len(dmi_non_burst_scores.reshape(-1))
-        #=======================================================================
-        ent_val_non_burst = analysis.beta.calculate_image_entropy.calc_entropy(dmi_non_burst_scores)
         
+        #=======================================================================
+        # lf_psd = normalize_data(lf_psd, vmin_lf, vmax_lf)
+        # hf_burst_psd = normalize_data(hf_burst_psd, vmin_hf, vmax_hf)
+        # hf_non_burst_psd = normalize_data(hf_non_burst_psd, vmin_hf, vmax_hf)
+        # 
+        # hf_burst_psd = (hf_burst_psd + lf_psd)/2
+        # tmp = np.ones(hf_burst_psd.shape); tmp[hf_burst_psd < 0.5] = 0
+        # hf_burst_psd = tmp
+        #=======================================================================
+        
+        lf_psd = lf_psd - np.min(lf_psd); lf_psd = lf_psd / np.max(lf_psd)
+        tmp = np.concatenate((hf_burst_psd, hf_non_burst_psd)).reshape(-1)
+        hf_burst_psd = hf_burst_psd - np.min(tmp); hf_non_burst_psd = hf_non_burst_psd - np.min(tmp);
+        tmp = np.concatenate((hf_burst_psd, hf_non_burst_psd)).reshape(-1)
+        hf_burst_psd = hf_burst_psd / np.max(tmp); hf_non_burst_psd = hf_non_burst_psd - np.min(tmp); hf_non_burst_psd = hf_non_burst_psd / np.max(tmp)
+        
+        dmi_burst_scores = normalize_data(dmi_burst_scores, 0, 1)
+        dmi_non_burst_scores = normalize_data(dmi_non_burst_scores, 0, 1)
+        
+        ent_val_burst = np.sum(np.multiply(hf_burst_psd, dmi_burst_scores))/np.sum(np.multiply(np.logical_not(hf_burst_psd), dmi_burst_scores))
+
+        (fig, axes) = plt.subplots(3, 2)
+        axes[0, 0].imshow(lf_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = 0, vmax = 1)
+        axes[0, 1].imshow(lf_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = 0, vmax = 1)
+        axes[1, 0].imshow(hf_burst_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = 0, vmax = 1)
+        axes[1, 1].imshow(hf_non_burst_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = 0, vmax = 1)
         axes[2, 0].imshow(dmi_burst_scores, vmin = 0.0, vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
         axes[2, 1].imshow(dmi_non_burst_scores, vmin = 0., vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
 
+#===============================================================================
+#         dmi_burst_scores = skimage.morphology.closing(dmi_burst_scores, skimage.morphology.square(4))
+#         dmi_burst_scores = skimage.filters.gaussian(dmi_burst_scores, [1, .5])
+#         dmi_burst_scores[dmi_burst_scores < 0.6] = 0
+#         #ent_val_burst = len(np.argwhere(dmi_burst_scores > 0.6).reshape(-1))/len(dmi_burst_scores.reshape(-1))
+#         
+#         #dmi_burst_scores = skimage.filters.gaussian(dmi_burst_scores, [1.5, .5])
+#         
+#         #ent_val_burst = analysis.beta.calculate_image_entropy.calc_entropy(dmi_burst_scores)
+#         #ent_val_burst = scipy.stats.entropy(np.sum(dmi_burst_scores, axis = 1))
+# 
+#         dmi_non_burst_scores = skimage.morphology.closing(dmi_non_burst_scores, skimage.morphology.square(4))
+#         dmi_non_burst_scores = skimage.filters.gaussian(dmi_non_burst_scores, [1.5, .5])
+#         dmi_non_burst_scores[dmi_non_burst_scores < 0.6] = 0
+#         #ent_val_non_burst = len(np.argwhere(dmi_non_burst_scores > 0.6).reshape(-1))/len(dmi_non_burst_scores.reshape(-1))
+#         
+#         #dmi_non_burst_scores = skimage.filters.gaussian(dmi_non_burst_scores, [1.5, .5])
+#         
+#         ent_val_non_burst = analysis.beta.calculate_image_entropy.calc_entropy(dmi_non_burst_scores)
+#         #ent_val_burst = scipy.stats.entropy(np.sum(dmi_non_burst_scores, axis = 1))
+#         
+#         #axes[2, 0].imshow(dmi_burst_scores, vmin = 0.0, vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
+#         #axes[2, 1].imshow(dmi_non_burst_scores, vmin = 0., vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
+#===============================================================================
+
+        #=======================================================================
+        # ent_val_burst = 0
+        #=======================================================================
+        ent_val_non_burst = 0
         
         axes[0, 0].set_title("burst: low frequency psd")
         axes[1, 0].set_title("burst: high frequency psd")
@@ -312,17 +345,20 @@ def calculate_spectograms(data, fs, filt_low, filt_high, peak_spread, peak_thres
         fig.set_tight_layout(tight = True)
         
         fig.savefig(outpath + "/img/3/" + file + ".png")
-        
+
+def normalize_data(data, min_val, max_val, radius = 3):
+    data = data - min_val; data = data / (max_val - min_val)
+    data = skimage.morphology.dilation(data, skimage.morphology.disk(radius))
+    
+    return data
         
 def main(overwrite = False):
     meta_data = methods.data_io.read_ods.read_file("../../../../data/meta.ods", "beta")
     in_path = "../../../../data/beta/data_for_python/"
     out_path = "../../../../results/beta/"
     for (file_idx, file) in enumerate(meta_data["file"]):
-        #=======================================================================
-        # if (file != "2623-s4-280"):
-        #     continue
-        #=======================================================================
+        if (file != "2541_s1_950-BETA-in-out"):
+            continue
         
         if (meta_data["valid data"][file_idx] == 0 or meta_data["process data"][file_idx] == 0):
             continue
