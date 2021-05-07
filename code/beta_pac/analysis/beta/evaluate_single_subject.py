@@ -264,22 +264,9 @@ def calculate_spectograms(data, fs, filt_low, filt_high, peak_spread, peak_thres
         dmi_burst_scores = (np.power(a, dmi_burst_scores)-1)/(a - 1)
         dmi_non_burst_scores = (np.power(a, dmi_non_burst_scores)-1)/(a - 1)
         
-        #=======================================================================
-        # vmin_lf = np.min([np.min(lf_psd),])
-        # vmax_lf = np.max([np.max(lf_psd),])
-        # vmin_hf = np.min([np.min(hf_burst_psd), np.min(hf_non_burst_psd)])
-        # vmax_hf = np.max([np.max(hf_burst_psd), np.max(hf_non_burst_psd)])
-        #=======================================================================
-        
-        #=======================================================================
-        # lf_psd = normalize_data(lf_psd, vmin_lf, vmax_lf)
-        # hf_burst_psd = normalize_data(hf_burst_psd, vmin_hf, vmax_hf)
-        # hf_non_burst_psd = normalize_data(hf_non_burst_psd, vmin_hf, vmax_hf)
-        # 
-        # hf_burst_psd = (hf_burst_psd + lf_psd)/2
-        # tmp = np.ones(hf_burst_psd.shape); tmp[hf_burst_psd < 0.5] = 0
-        # hf_burst_psd = tmp
-        #=======================================================================
+
+
+
         
         lf_psd = lf_psd - np.min(lf_psd); lf_psd = lf_psd / np.max(lf_psd)
         tmp = np.concatenate((hf_burst_psd, hf_non_burst_psd)).reshape(-1)
@@ -287,49 +274,22 @@ def calculate_spectograms(data, fs, filt_low, filt_high, peak_spread, peak_thres
         tmp = np.concatenate((hf_burst_psd, hf_non_burst_psd)).reshape(-1)
         hf_burst_psd = hf_burst_psd / np.max(tmp); hf_non_burst_psd = hf_non_burst_psd - np.min(tmp); hf_non_burst_psd = hf_non_burst_psd / np.max(tmp)
         
-        dmi_burst_scores = normalize_data(dmi_burst_scores, 0, 1)
-        dmi_non_burst_scores = normalize_data(dmi_non_burst_scores, 0, 1)
-        
-        ent_val_burst = np.sum(np.multiply(hf_burst_psd, dmi_burst_scores))/np.sum(np.multiply(np.logical_not(hf_burst_psd), dmi_burst_scores))
+        lf_psd = (lf_psd - 0.5)*2
+        hf_burst_psd = (hf_burst_psd - 0.5)*2
+        hf_non_burst_psd = (hf_non_burst_psd - 0.5)*2
+                
+        (ent_val_burst, ent_val_non_burst) = score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
+                                                       dmi_burst_scores, dmi_non_burst_scores,
+                                                       2, 2)
 
         (fig, axes) = plt.subplots(3, 2)
-        axes[0, 0].imshow(lf_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = 0, vmax = 1)
-        axes[0, 1].imshow(lf_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = 0, vmax = 1)
-        axes[1, 0].imshow(hf_burst_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = 0, vmax = 1)
-        axes[1, 1].imshow(hf_non_burst_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = 0, vmax = 1)
+        axes[0, 0].imshow(lf_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = -1, vmax = 1)
+        axes[0, 1].imshow(lf_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = -1, vmax = 1)
+        axes[1, 0].imshow(hf_burst_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = -1, vmax = 1)
+        axes[1, 1].imshow(hf_non_burst_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = -1, vmax = 1)
         axes[2, 0].imshow(dmi_burst_scores, vmin = 0.0, vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
         axes[2, 1].imshow(dmi_non_burst_scores, vmin = 0., vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
 
-#===============================================================================
-#         dmi_burst_scores = skimage.morphology.closing(dmi_burst_scores, skimage.morphology.square(4))
-#         dmi_burst_scores = skimage.filters.gaussian(dmi_burst_scores, [1, .5])
-#         dmi_burst_scores[dmi_burst_scores < 0.6] = 0
-#         #ent_val_burst = len(np.argwhere(dmi_burst_scores > 0.6).reshape(-1))/len(dmi_burst_scores.reshape(-1))
-#         
-#         #dmi_burst_scores = skimage.filters.gaussian(dmi_burst_scores, [1.5, .5])
-#         
-#         #ent_val_burst = analysis.beta.calculate_image_entropy.calc_entropy(dmi_burst_scores)
-#         #ent_val_burst = scipy.stats.entropy(np.sum(dmi_burst_scores, axis = 1))
-# 
-#         dmi_non_burst_scores = skimage.morphology.closing(dmi_non_burst_scores, skimage.morphology.square(4))
-#         dmi_non_burst_scores = skimage.filters.gaussian(dmi_non_burst_scores, [1.5, .5])
-#         dmi_non_burst_scores[dmi_non_burst_scores < 0.6] = 0
-#         #ent_val_non_burst = len(np.argwhere(dmi_non_burst_scores > 0.6).reshape(-1))/len(dmi_non_burst_scores.reshape(-1))
-#         
-#         #dmi_non_burst_scores = skimage.filters.gaussian(dmi_non_burst_scores, [1.5, .5])
-#         
-#         ent_val_non_burst = analysis.beta.calculate_image_entropy.calc_entropy(dmi_non_burst_scores)
-#         #ent_val_burst = scipy.stats.entropy(np.sum(dmi_non_burst_scores, axis = 1))
-#         
-#         #axes[2, 0].imshow(dmi_burst_scores, vmin = 0.0, vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
-#         #axes[2, 1].imshow(dmi_non_burst_scores, vmin = 0., vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
-#===============================================================================
-
-        #=======================================================================
-        # ent_val_burst = 0
-        #=======================================================================
-        ent_val_non_burst = 0
-        
         axes[0, 0].set_title("burst: low frequency psd")
         axes[1, 0].set_title("burst: high frequency psd")
         axes[2, 0].set_title("burst: PAC: %2.2f" % (ent_val_burst, ))
@@ -345,6 +305,56 @@ def calculate_spectograms(data, fs, filt_low, filt_high, peak_spread, peak_thres
         fig.set_tight_layout(tight = True)
         
         fig.savefig(outpath + "/img/3/" + file + ".png")
+
+def score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
+              dmi_burst_scores, dmi_non_burst_scores, 
+              inner_radius, outer_radius):
+        lf_psd = np.copy(lf_psd); hf_burst_psd = np.copy(hf_burst_psd); hf_non_burst_psd = np.copy(hf_non_burst_psd)
+        dmi_burst_scores = np.copy(dmi_burst_scores)
+        dmi_non_burst_scores = np.copy(dmi_non_burst_scores)
+    
+        (lf_psd, hf_burst_psd, hf_non_burst_psd) = get_full_reference_area(lf_psd, hf_burst_psd, hf_non_burst_psd, 
+                                                                           inner_radius, outer_radius)
+
+        dmi_burst_scores[dmi_burst_scores < 0.5] = 0
+        dmi_non_burst_scores[dmi_non_burst_scores < 0.5] = 0
+
+        ent_val_burst = np.sum(np.multiply(hf_burst_psd, dmi_burst_scores))/np.sum(dmi_burst_scores) if (np.sum(dmi_burst_scores) != 0) else 0
+        ent_val_non_burst = np.sum(np.multiply(hf_non_burst_psd, dmi_non_burst_scores))/np.sum(dmi_non_burst_scores) if (np.sum(dmi_non_burst_scores) != 0) else 0
+        
+        return (ent_val_burst, ent_val_non_burst)
+
+
+def get_full_reference_area(lf_psd, hf_burst_psd, hf_non_burst_psd, radius_small = 2, radius_large = 2):
+    lf_psd = np.copy(lf_psd); hf_burst_psd = np.copy(hf_burst_psd); hf_non_burst_psd = np.copy(hf_non_burst_psd)    
+    
+    (lf_psd_small, hf_burst_psd_small, hf_non_burst_psd_small) = get_reference_area(lf_psd, hf_burst_psd, hf_non_burst_psd, radius_small)
+    lf_psd_small = np.sign(lf_psd_small); lf_psd_small[lf_psd_small < 0] = 0
+    hf_burst_psd_small = np.sign(hf_burst_psd_small); hf_burst_psd_small[hf_burst_psd_small < 0] = 0
+
+    (lf_psd_large, hf_burst_psd_large, hf_non_burst_psd_large) = get_reference_area(lf_psd, hf_burst_psd, hf_non_burst_psd, radius_large)
+    lf_psd_large = np.sign(lf_psd_large); lf_psd_large[lf_psd_large > 0] = 0
+    hf_burst_psd_large = np.sign(hf_burst_psd_large); hf_burst_psd_large[hf_burst_psd_large > 0] = 0
+
+    lf_psd = lf_psd_small + lf_psd_large
+    hf_burst_psd = hf_burst_psd_small + hf_burst_psd_large
+    hf_non_burst_psd = hf_non_burst_psd_small + hf_non_burst_psd_large
+    
+    hf_burst_psd = lf_psd + hf_burst_psd; hf_burst_psd[np.abs(hf_burst_psd) < 1.5] = 0
+    hf_non_burst_psd = lf_psd + hf_non_burst_psd; hf_non_burst_psd[np.abs(hf_non_burst_psd) < 1.5] = 0
+    
+    return (lf_psd, hf_burst_psd, hf_non_burst_psd)
+
+def get_reference_area(lf_psd, hf_burst_psd, hf_non_burst_psd, radius):
+    lf_psd = np.copy(lf_psd)
+    hf_burst_psd = np.copy(hf_burst_psd)
+    hf_non_burst_psd = np.copy(hf_non_burst_psd)
+    
+    lf_psd = skimage.morphology.dilation(lf_psd, skimage.morphology.disk(radius))
+    hf_burst_psd = skimage.morphology.dilation(hf_burst_psd, skimage.morphology.disk(radius))
+    hf_non_burst_psd = skimage.morphology.dilation(hf_non_burst_psd, skimage.morphology.disk(radius))
+        
+    return (lf_psd, hf_burst_psd, hf_non_burst_psd)
 
 def normalize_data(data, min_val, max_val, radius = 3):
     data = data - min_val; data = data / (max_val - min_val)
