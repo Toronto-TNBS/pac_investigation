@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.use("Qt5agg")
 import matplotlib.pyplot as plt
 
-import methods.data_io.read_ods
+import methods.data_io.ods
     
 import scipy.signal
 import numpy as np
@@ -19,8 +19,10 @@ import finn.filters.frequency as ff
         
 import os        
 
-def main(mode = "beta"):    
-    meta_data = methods.data_io.read_ods.read_file("../../../data/meta.ods", mode)
+def main(mode = "beta"):
+    meta = methods.data_io.ods.ods_data("../../../data/meta.ods")
+    meta_data = meta.get_sheet_as_dict("beta")
+    
     in_path = "../../../data/"+mode+"/data_for_python/"
     for (file_idx, file) in enumerate(meta_data["file"]):
         

@@ -66,8 +66,8 @@ def __mainInner(basePath, file, overwrite):
     pickle.dump(hdr, open(filePath + ".txt_conv_hdr.pkl", "wb"))
     pickle.dump(data, open(filePath + ".txt_conv_data.pkl", "wb"))
 
-main("/home/voodoocode/Documents/professional/UHN/pac_investigation/data/beta/new/meta.ods",
-     "/home/voodoocode/Documents/professional/UHN/pac_investigation/data/beta/new/", 4, False)
+main("/mnt/data/Professional/UHN/pac_investigation/data/beta/new2/meta.ods",
+     "/mnt/data/Professional/UHN/pac_investigation/data/beta/new2/", 4, False)
 print("Terminated successfully")
 
 

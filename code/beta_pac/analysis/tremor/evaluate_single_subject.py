@@ -17,7 +17,7 @@ import finn.cross_frequency_coupling.direct_modulation_index as dmi
 import finn.misc.timed_pool as tp
 
 import methods.detection.bursts
-import methods.data_io.read_ods
+import methods.data_io.ods
 
 import os
 
@@ -274,7 +274,7 @@ def calculate_spectograms(data, fs, filt_low, filt_high, peak_spread, peak_thres
         fig.savefig(outpath + "/img/3/" + file + ".png")
         
 def main(overwrite = True, mode = "tremor"):
-    meta_data = methods.data_io.read_ods.read_file("../../../../data/meta.ods", mode)
+    meta_data = methods.data_io.ods.read_file("../../../../data/meta.ods", mode)
     in_path = "../../../../data/"+mode+"/data_for_python/"
     out_path = "../../../../results/"+mode+"/"
     for (file_idx, file) in enumerate(meta_data["file"]):
