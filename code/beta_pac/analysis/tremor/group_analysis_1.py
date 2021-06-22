@@ -10,24 +10,24 @@ import numpy as np
 
 def main3():
     full_data = ods_reader.ods_data("../../data/meta.ods")
-    (pre_labels, pre_data) = full_data.get_sheet_as_array("beta")
+    (pre_labels, pre_data) = full_data.get_sheet_as_array("tremor")
     
-    targets = ["lf beta", "hf beta", "hf burst beta", "hf non burst beta"]
+    targets = ["lf tremor", "hf tremor", "hf burst tremor", "hf non burst tremor"]
     patient_id_idx = pre_labels.index("patient_id")
     trial_idx = pre_labels.index("trial")
-    lf_beta_idx = pre_labels.index("lf manual")
-    hf_beta_idx = pre_labels.index("hf manual")
+    lf_tremor_idx = pre_labels.index("lf manual")
+    hf_tremor_idx = pre_labels.index("hf manual")
     valid_idx = pre_labels.index("valid_data")
-    beta_lfp_strength_idx = pre_labels.index("beta lfp strength 1")
-    beta_spike_strength_idx = pre_labels.index("beta overall strength 1")
-    beta_burst_strength_idx = pre_labels.index("beta burst strength 1")
-    beta_non_burst_strength_idx = pre_labels.index("beta non burst strength 1")
+    tremor_lfp_strength_idx = pre_labels.index("tremor lfp strength 1")
+    tremor_spike_strength_idx = pre_labels.index("tremor overall strength 1")
+    tremor_burst_strength_idx = pre_labels.index("tremor burst strength 1")
+    tremor_non_burst_strength_idx = pre_labels.index("tremor non burst strength 1")
     pre_labels = [pre_label.replace(" manual","") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
 
-    idx_list_burst_0 = np.asarray([beta_lfp_strength_idx, patient_id_idx, trial_idx, lf_beta_idx, hf_beta_idx])
-    idx_list_burst_1 = np.asarray([beta_spike_strength_idx, patient_id_idx, trial_idx, lf_beta_idx, hf_beta_idx])
-    idx_list_burst_2 = np.asarray([beta_burst_strength_idx, patient_id_idx, trial_idx, lf_beta_idx, hf_beta_idx])
-    idx_list_burst_3 = np.asarray([beta_non_burst_strength_idx, patient_id_idx, trial_idx, lf_beta_idx, hf_beta_idx])
+    idx_list_burst_0 = np.asarray([tremor_lfp_strength_idx, patient_id_idx, trial_idx, lf_tremor_idx, hf_tremor_idx])
+    idx_list_burst_1 = np.asarray([tremor_spike_strength_idx, patient_id_idx, trial_idx, lf_tremor_idx, hf_tremor_idx])
+    idx_list_burst_2 = np.asarray([tremor_burst_strength_idx, patient_id_idx, trial_idx, lf_tremor_idx, hf_tremor_idx])
+    idx_list_burst_3 = np.asarray([tremor_non_burst_strength_idx, patient_id_idx, trial_idx, lf_tremor_idx, hf_tremor_idx])
     
     idx_lists_burst = [idx_list_burst_0, idx_list_burst_1, idx_list_burst_2, idx_list_burst_3]
     
@@ -38,9 +38,9 @@ def main3():
         for row_idx in range(len(pre_data)):
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
-            if (idx_list_idx == 0 and int(pre_data[row_idx, lf_beta_idx]) == -1):# Discard samples which could not be manually classified
+            if (idx_list_idx == 0 and int(pre_data[row_idx, lf_tremor_idx]) == -1):# Discard samples which could not be manually classified
                 continue
-            if (idx_list_idx > 0 and int(pre_data[row_idx, hf_beta_idx]) == -1): # Discard samples which could not be manually classified
+            if (idx_list_idx > 0 and int(pre_data[row_idx, hf_tremor_idx]) == -1): # Discard samples which could not be manually classified
                 continue
             
             loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [0]))
@@ -69,7 +69,7 @@ def main3():
         
         print(targets[data_idx], np.asarray(tmp))
         
-        np.save("../../results/beta/stats/1/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        np.save("../../results/tremor/stats/1/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
     
     
 main3()

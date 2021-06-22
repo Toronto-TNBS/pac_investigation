@@ -9,14 +9,14 @@ import finn.statistical.generalized_linear_models as glmm
 import numpy as np
 
 def main():
-    full_data = ods_reader.ods_data("../../../../data/meta.ods")
-    (pre_labels, pre_data) = full_data.get_sheet_as_array("beta")
+    full_data = ods_reader.ods_data("../../data/meta.ods")
+    (pre_labels, pre_data) = full_data.get_sheet_as_array("tremor")
     
     targets = ["strength", "specificity", "specific strength"]
     patient_id_idx = pre_labels.index("patient_id")
     trial_idx = pre_labels.index("trial")
-    lf_beta_idx = pre_labels.index("lf auto")
-    hf_beta_idx = pre_labels.index("hf auto")
+    lf_beta_idx = pre_labels.index("lf manual")
+    hf_beta_idx = pre_labels.index("hf manual")
     valid_idx = pre_labels.index("valid_data")
     pac_burst_strength_idx = pre_labels.index("pac burst strength 3")
     pac_non_burst_strength_idx = pre_labels.index("pac non burst strength 3")
@@ -24,7 +24,7 @@ def main():
     pac_non_burst_specificity_idx = pre_labels.index("pac non burst specificity 3")
     pac_burst_specific_strenght_idx = pre_labels.index("pac burst specific strength 3")
     pac_non_burst_specific_strenght_idx = pre_labels.index("pac non burst specific strength 3")
-    pre_labels = [pre_label.replace(" auto","") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
+    pre_labels = [pre_label.replace(" manual","") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
 
     idx_list_burst_0 = np.asarray([pac_burst_strength_idx, patient_id_idx, trial_idx, lf_beta_idx, hf_beta_idx])
     idx_list_burst_1 = np.asarray([pac_burst_specificity_idx, patient_id_idx, trial_idx, lf_beta_idx, hf_beta_idx])
@@ -67,9 +67,9 @@ def main():
         tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
         (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
         
-        print(np.asarray(tmp))
+        print(targets[data_idx], np.asarray(tmp))
         
-        np.save("../../../../results/beta/stats/3/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        np.save("/mnt/data/Professional/UHN/pac_investigation/results/tremor/stats/3/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
     
     
 main()

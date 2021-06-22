@@ -5,32 +5,26 @@ Created on May 21, 2021
 '''
 
 import methods.data_io.ods as ods_reader
-import finn.statistical.glmm as glmm
+import finn.statistical.generalized_linear_models as glmm
 import numpy as np
-import os
 
-def main():
-    full_data = ods_reader.ods_data("../../data/meta.ods")
-    (pre_labels, pre_data) = full_data.get_sheet_as_array("beta")
+def main3():
+    full_data = ods_reader.ods_data("../../../../data/meta.ods")
+    (pre_labels, pre_data) = full_data.get_sheet_as_array("tremor")
     
-    targets = ["strength", "specificity", "specific strength"]
+    targets = ["lf tremor", "hf tremor", "hf burst tremor", "hf non burst tremor"]
     patient_id_idx = pre_labels.index("patient_id")
     trial_idx = pre_labels.index("trial")
-    lf_beta_idx = pre_labels.index("lf auto")
-    hf_beta_idx = pre_labels.index("hf auto")
+    tremor_burst_strength_idx = pre_labels.index("tremor burst strength 1")
+    tremor_non_burst_strength_idx = pre_labels.index("tremor non burst strength 1")
     valid_idx = pre_labels.index("valid_data")
-    pac_strength_idx = pre_labels.index("pac overall strength 2")
-    pac_burst_strength_idx = pre_labels.index("pac burst strength 2")
-    pac_non_burst_strength_idx = pre_labels.index("pac non burst strength 2")
-    pre_labels = [pre_label.replace(" auto","") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
+    pre_labels = [pre_label.replace(" manual","") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
 
-    idx_list_burst_0 = np.asarray([pac_strength_idx, patient_id_idx, trial_idx, lf_beta_idx, hf_beta_idx])
-    idx_list_burst_1 = np.asarray([pac_burst_strength_idx, patient_id_idx, trial_idx, lf_beta_idx, hf_beta_idx])
-
-    idx_list_non_burst_1 = np.asarray([pac_non_burst_strength_idx, patient_id_idx, trial_idx, lf_beta_idx, hf_beta_idx])
+    idx_list_burst_0 = np.asarray([tremor_burst_strength_idx, patient_id_idx, trial_idx])
+    idx_list_non_burst_0 = np.asarray([tremor_non_burst_strength_idx, patient_id_idx, trial_idx])
     
-    idx_lists_burst = [idx_list_burst_0, idx_list_burst_1]
-    idx_lists_non_burst = [None, idx_list_non_burst_1]
+    idx_lists_burst = [idx_list_burst_0]
+    idx_lists_non_burst = [idx_list_non_burst_0]
     
     data = list()
     labels = list()
@@ -42,11 +36,8 @@ def main():
             
             loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [0]))
             data[-1].append(loc_data)
-            
-            if (idx_lists_non_burst[idx_list_idx] is not None):
-                loc_data = np.concatenate((pre_data[row_idx, idx_lists_non_burst[idx_list_idx]], [1]))
-                data[-1].append(loc_data)
-                
+            loc_data = np.concatenate((pre_data[row_idx, idx_lists_non_burst[idx_list_idx]], [1]))
+            data[-1].append(loc_data)
         loc_labels = list(); loc_labels.append("target_value") 
         for label_idx in idx_lists_burst[idx_list_idx][1:]:
             loc_labels.append(pre_labels[label_idx])
@@ -56,12 +47,11 @@ def main():
     for data_idx in range(len(data)):
         data[data_idx] = np.asarray(data[data_idx], np.float32)
     
-    formula = ["target_value ~ lf + hf + lf:hf + (1|patient_id) + (1|trial)", 
-               "target_value ~ lf + hf + lf:hf + burst + (1|patient_id) + (1|trial)"]
+    formula = ["target_value ~ burst + (1|patient_id) + (1|trial)"]
     #labels => ['target_value', 'patient id', 'trial', 'lf_3', 'hf_3', 'burst']
     factor_type = ["continuous", "categorical", "categorical", "categorical", "categorical", "categorical"] 
     contrasts = "list(target_value = contr.sum, lf = contr.sum, hf = contr.sum, burst = contr.sum, patient_id = contr.sum, trial = contr.sum)"
-    data_type = "poisson"
+    data_type = "gaussian"
     
     for data_idx in range(len(data)):
         tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula[data_idx], contrasts, data_type)
@@ -69,7 +59,7 @@ def main():
         
         print(targets[data_idx], np.asarray(tmp))
         
-        np.save("../../results/beta/stats/2/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        np.save("../../../../results/tremor/stats/15/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
     
     
-main()
+main3()

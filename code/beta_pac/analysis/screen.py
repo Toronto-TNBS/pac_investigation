@@ -19,12 +19,15 @@ import finn.filters.frequency as ff
         
 import os        
 
-def main(mode = "beta"):
+def main(mode = "tremor"):
     meta = methods.data_io.ods.ods_data("../../../data/meta.ods")
-    meta_data = meta.get_sheet_as_dict("beta")
+    meta_data = meta.get_sheet_as_dict(mode)
     
     in_path = "../../../data/"+mode+"/data_for_python/"
     for (file_idx, file) in enumerate(meta_data["file"]):
+        
+        if (file == ""):
+            continue
         
         if (meta_data["height-checked"][file_idx] == 1):
             continue

@@ -2,7 +2,7 @@
 """
 Created on Mon Oct 21 13:00:01 2019
 
-@author: Luka
+@author: Luka & VoodooCode
 """
 
 import numpy as np
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import scipy.signal
 
 import finn.filters.frequency as ff
-import finn.cross_frequency_coupling.direct_modulation_index as dmi
+import finn.cfc.pac as pac
 
 import finn.misc.timed_pool as tp
 
@@ -21,8 +21,10 @@ import methods.data_io.ods
 
 import os
 import scipy.stats
+from quantities.units.time import fs
 
 thread_cnt = 11
+image_format = ".png"
 
 def preprocess_data(in_data, fs, peak_spread, peak_thresh):
     in_data = np.copy(in_data)
@@ -162,23 +164,28 @@ def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_
         axes[2, 1].set_xticklabels(axes[2, 1].get_xticks(), rotation = 45)
         
         fig.set_tight_layout(tight = True)
-        fig.savefig(outpath + "img/1/" + file + ".png")
+        fig.savefig(outpath + "img/1/" + file + image_format)
             
     return (lf_beta_strength, hf_beta_strength, burst_beta_strength, non_burst_beta_strength)
 
 def calculate_dmi(data, fs_data01, peak_spread, peak_thresh,
+                  lf_f_min, lf_f_max, hf_f_min, hf_f_max,
                   visualize = True, outpath = None, file = None, overwrite = True):
     if (overwrite or os.path.exists(outpath + "data/2/" + file + ".pkl") == False):
     
-        high_freq_component = ff.fir(np.asarray(data), 300, None, 1, fs_data01)
-        #low_freq_component = ff.fir(np.asarray(data), filt_low, filt_high, 0.1, fs_data01)
-        low_freq_component = ff.fir(np.asarray(data), None, 50, 0.1, fs_data01)
+        high_freq_component = ff.fir(np.asarray(data), 300, None, 0.1, fs_data01)
+        #low_freq_component = ff.fir(np.asarray(data), None, 50, 0.1, fs_data01)
+        #low_freq_component = ff.fir(np.asarray(data), lf_f_min, lf_f_max, 0.1, fs_data01)
+        low_freq_component = ff.fir(np.asarray(data), hf_f_min, hf_f_max, 0.1, fs_data01)
+        
+        #low_freq_component = ff.fir(np.asarray(data), np.min([lf_f_min, hf_f_min]), np.max([lf_f_max, hf_f_max]), 0.1, fs_data01)
+        #low_freq_component = ff.fir(np.asarray(data), 12, 32, 0.1, fs_data01)
         
         (burst_hf_data, non_burst_hf_data) = preprocess_data(high_freq_component, fs_data01, peak_spread, peak_thresh)
         
-        (score_default, best_fit_default, amp_signal_default) = dmi.run(low_freq_component, high_freq_component, 10, 1)
-        (score_burst, best_fit_burst, amp_signal_burst) = dmi.run(low_freq_component, burst_hf_data, 10, 1)
-        (score_non_burst, best_fit_non_burst, amp_signal_non_burst) = dmi.run(low_freq_component, non_burst_hf_data, 10, 1)
+        (score_default, best_fit_default, amp_signal_default) = pac.run_dmi(low_freq_component, high_freq_component, 10, 1)
+        (score_burst, best_fit_burst, amp_signal_burst) = pac.run_dmi(low_freq_component, burst_hf_data, 10, 1)
+        (score_non_burst, best_fit_non_burst, amp_signal_non_burst) = pac.run_dmi(low_freq_component, non_burst_hf_data, 10, 1)
         
         pickle.dump([best_fit_default, amp_signal_default, score_default,
                      best_fit_burst, amp_signal_burst, score_burst,
@@ -206,7 +213,7 @@ def calculate_dmi(data, fs_data01, peak_spread, peak_thresh,
         axes[2].plot(amp_signal_non_burst)
         
         fig.set_tight_layout(tight = True)
-        fig.savefig(outpath + "img/2/" + file + ".png")
+        fig.savefig(outpath + "img/2/" + file + image_format)
         
     return (score_default, score_burst, score_non_burst)
 
@@ -235,14 +242,14 @@ def calculate_spectograms_inner(data, window_width, fs,
         try:
             loc_dmi_lf_data = ff.fir(np.copy(data), f_idx - f_window_width/2, f_idx + f_window_width/2, filter_step_width, fs)        
             if ((loc_burst_hf_data != 0).all()):
-                (loc_dmi_score, _, _) = dmi.run(loc_dmi_lf_data, loc_burst_hf_data, 10, 1)
+                (loc_dmi_score, _, _) = pac.run_dmi(loc_dmi_lf_data, loc_burst_hf_data, 10, 1)
             else:
                 loc_dmi_score = 0 #There cannot be any pack if there is no data in this segment
             loc_burst_dmi_scores.append(loc_dmi_score)
             
             loc_dmi_lf_data = ff.fir(np.copy(data), f_idx - f_window_width/2, f_idx + f_window_width/2, filter_step_width, fs)
             if ((loc_non_burst_hf_data != 0).all()):
-                (loc_dmi_score, _, _) = dmi.run(loc_dmi_lf_data, loc_non_burst_hf_data, 10, 1)
+                (loc_dmi_score, _, _) = pac.run_dmi(loc_dmi_lf_data, loc_non_burst_hf_data, 10, 1)
             else:
                 loc_dmi_score = 0 #There cannot be any pack if there is no data in this segment
             loc_non_burst_dmi_scores.append(loc_dmi_score)
@@ -252,10 +259,7 @@ def calculate_spectograms_inner(data, window_width, fs,
     return (loc_lf_psd[min_f_bin_idx:max_f_bin_idx], loc_burst_hf_psd[min_f_bin_idx:max_f_bin_idx], loc_non_burst_hf_psd[min_f_bin_idx:max_f_bin_idx],
             loc_burst_dmi_scores, loc_non_burst_dmi_scores)
 
-import skimage.filters
-
 import skimage.morphology
-import analysis.beta.calculate_image_entropy
 
 def calculate_spectograms(data, fs, peak_spread, peak_thresh, filter_step_width = 1,
                           lf_zoom_factor = 1, lf_offset_factor = 0, hf_zoom_factor = 1, hf_offset_factor = 0, pac_thresh = 0.6,
@@ -362,11 +366,118 @@ def calculate_spectograms(data, fs, peak_spread, peak_thresh, filter_step_width 
         
         fig.set_tight_layout(tight = True)
         
-        fig.savefig(outpath + "/img/3/" + file + ".png")
+        fig.savefig(outpath + "/img/3/" + file + image_format)
         
     return (pac_burst_strength, pac_non_burst_strength,
             pac_burst_specificity, pac_non_burst_specificity, 
             pac_burst_specific_strength, pac_non_burst_specific_strength)
+
+#===============================================================================
+# import finn.same_frequency_coupling.time_domain.directional_absolute_coherency as dac
+# import finn.same_frequency_coupling.time_domain.magnitude_squared_coherency as msc
+# 
+# #===============================================================================
+# # import scipy.signal
+# # import mne.connectivity
+# # import finn.same_frequency_coupling.__misc as misc
+# # 
+# # def calculate_sfc_inner(data, filter_step_width, fs, peak_spread, peak_thresh, nfft_fs_factor,
+# #                         f_min_lf, f_max_lf,
+# #                         f_min_hf, f_max_hf, f_step_size_hf,
+# #                         start_idx, window_width):
+# #     print("Processing idx %i of %i" % (start_idx, len(data) - window_width))
+# #     data = np.asarray(data)
+# #        
+# #     loc_lf_data = ff.fir(np.copy(data), f_min_lf, f_max_lf, filter_step_width, fs)
+# #     loc_hf_data = ff.fir(np.copy(data), 300, None, filter_step_width, fs)
+# #     (loc_burst_hf_data, loc_non_burst_hf_data) = preprocess_data(loc_hf_data, fs, peak_spread, peak_thresh)
+# #     loc_hf_data = np.abs(scipy.signal.hilbert(loc_hf_data))
+# #     loc_burst_hf_data = np.abs(scipy.signal.hilbert(loc_burst_hf_data))
+# #     loc_non_burst_hf_data = np.abs(scipy.signal.hilbert(loc_non_burst_hf_data))
+# #     
+# # #===============================================================================
+# # #     # scipy.signal.coherence(loc_lf_data, loc_hf_data, fs, window = "hanning", nperseg = fs, noverlap = 0, nfft = fs, detrend = False)
+# # #     #------------ msc.run(loc_lf_data, loc_hf_data, fs, nperseg = fs, nfft = fs)
+# # # 
+# # #     nperseg = int(fs/2)
+# # # 
+# # #     seg_data_X = misc.__segment_data(loc_hf_data, nperseg, "zero")
+# # #     seg_data_Y = misc.__segment_data(loc_lf_data, nperseg, "zero")
+# # # 
+# # #     (bins, f_data_X) = misc.__calc_FFT(seg_data_X, fs, nfft = nperseg, window = "hanning")
+# # #     (_,    f_data_Y) = misc.__calc_FFT(seg_data_Y, fs, nfft = nperseg, window = "hanning")
+# # # 
+# # #     s_xx = np.conjugate(f_data_X) * f_data_X * 2
+# # #     s_yy = np.conjugate(f_data_Y) * f_data_Y * 2
+# # #     s_xy = np.conjugate(f_data_X) * f_data_Y * 2
+# # # 
+# # #     s_xx = np.mean(s_xx, axis = 0)
+# # #     s_yy = np.mean(s_yy, axis = 0)
+# # #     s_xy = np.mean(s_xy, axis = 0)
+# # # 
+# # #     #Doublecheck s_xx, s_yy and s_xy after setting the scale to 1!
+# # # 
+# # #     mne_coh = mne.connectivity.spectral_connectivity(np.swapaxes(np.asarray([seg_data_X, seg_data_Y]), 0, 1), method = "coh", sfreq = fs, mode = "fourier")
+# # #     finn_coh = msc.run(loc_lf_data, loc_hf_data, fs, nperseg, nperseg, False)[1]
+# # #     scipy_coh = scipy.signal.coherence(loc_hf_data, loc_lf_data, fs, "hanning", nperseg, 0, nperseg, "constant")[1]
+# # # 
+# # #     (fig, axes) = plt.subplots(3, 1)
+# # #     axes[0].plot(finn_coh[:50])
+# # #     axes[1].plot(scipy_coh[:50])
+# # #     axes[2].plot(np.square(np.concatenate(([0, 0, 0, 0, 0], mne_coh[0][1, 0][:45]))))
+# # #     plt.show(block = False)
+# # # 
+# # #     print(bins[0:3])
+# # #     (fig, axes) = plt.subplots(3, 1)
+# # #     axes[0].plot(np.square(mne_coh[0][1, 0]))
+# # #     axes[1].plot(finn_coh[5:])
+# # #     axes[2].plot(scipy_coh[5:])
+# # #     plt.show(block = True)
+# # #     quit()
+# # #===============================================================================
+# # 
+# #     dac_values = list()
+# #     for f_start in np.arange(f_min_hf, f_max_hf, f_step_size_hf):
+# #         full = msc.run(loc_lf_data, loc_hf_data, fs, int(fs*2), int(fs*2), True)
+# #         full = dac.run(loc_lf_data, loc_hf_data, f_start, f_start + f_step_size_hf, fs, nperseg = int(fs/2),
+# #                        nfft = int(fs/2), return_signed_conn = True, minimal_angle_thresh = 2, detrend = True)[1]
+# #         burst = None
+# #         non_burst = None
+# #         
+# #         dac_values.append([all, burst, non_burst])
+# #             
+# #     return dac_values
+# # 
+# # def calculate_sfc(data, fs, peak_spread, peak_thresh, filter_step_width = 1, nfft_fs_factor = 8,
+# #                   f_min_lf = 0, f_max_lf = 0,
+# #                   visualize = True, outpath = None, file = None, overwrite = True):
+# #     
+# #     if (overwrite or os.path.exists(outpath + "data/4/" + file + ".pkl") == False):
+# #         window_width = int(fs * nfft_fs_factor)
+# #         window_step_sz = int(fs/2)
+# #         
+# #         f_min_hf = 12
+# #         f_max_hf = 45
+# #         f_step_size_hf = 1
+# #         
+# #         start_idx = 0
+# #         sfc_score = calculate_sfc_inner(data[start_idx:(start_idx + window_width)], filter_step_width, fs, peak_spread, peak_thresh, nfft_fs_factor, f_min_lf, f_max_lf, f_min_hf, f_max_hf, f_step_size_hf, start_idx, window_width)
+# #             
+# #         #-------- sfc_score = np.asarray(tp.run(thread_cnt, calculate_sfc_inner,
+# #                                       # [(data[start_idx:(start_idx + window_width)], filter_step_width, fs, peak_spread, peak_thresh, nfft_fs_factor,
+# #                                         # f_min_lf, f_max_lf, f_min_hf, f_max_hf, f_step_size_hf,
+# #                                         # start_idx, window_width) for start_idx in np.arange(0, len(data) - window_width, window_step_sz)],
+# #                                       #--- max_time = None, delete_data = True))
+# #         
+# #         pickle.dump(sfc_score, open(outpath + "data/4/" + file + ".pkl", "wb"))
+# #     else:
+# #         sfc_score = pickle.load(open(outpath + "data/4/" + file + ".pkl", "rb"))
+# #     
+# #     
+# #         
+# #     return sfc_score
+# #===============================================================================
+#===============================================================================
 
 def score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
               dmi_burst_scores, dmi_non_burst_scores, 
@@ -491,25 +602,14 @@ def main(mode = "power", overwrite = False, visualize = False):
             continue
         
         #=======================================================================
-        # if (file != "2667_s2_2320-BETA-in-and-out"):#"2541_s1_950-BETA-in-out"):
-        # #if (file != "2623-s3-508"):#"2541_s1_950-BETA-in-out"):
+        # if (file != "2541_s1_908-NOT-BETA"):
         #     continue
         #=======================================================================
         
-        if (meta_data["valid_data"][file_idx] == 0 or meta_data["process data"][file_idx] == 0):
+        if (int(meta_data["valid_data"][file_idx]) == 0 or int(meta_data["process data"][file_idx]) == 0):
             continue
         
-        #=======================================================================
-        # if (file != "2626-s4-568-b" and file != "2623-s1-130" and file != "2829-s1-1240-a"):
-        #     continue
-        #=======================================================================
-        
-        #=======================================================================
-        # if (meta_data["spread_checked"][file_idx] == 1):
-        #     continue
-        #=======================================================================
-        
-        print(file)
+        print("file", file, end = " | ")
         
         if (overwrite == True):
             file_hdr = pickle.load(open(in_path+file+".txt_conv_hdr.pkl", "rb"))
@@ -524,13 +624,13 @@ def main(mode = "power", overwrite = False, visualize = False):
             fs_data01 = None
             loc_data = None
                     
-        lf_f_min = meta_data["lf f min"][file_idx]
-        lf_f_max = meta_data["lf f max"][file_idx]
-        hf_f_min = meta_data["hf f min"][file_idx]
-        hf_f_max = meta_data["hf f max"][file_idx]            
+        lf_f_min = int(meta_data["lf f min"][file_idx])
+        lf_f_max = int(meta_data["lf f max"][file_idx])
+        hf_f_min = int(meta_data["hf f min"][file_idx])
+        hf_f_max = int(meta_data["hf f max"][file_idx])            
       
         if ("power" in mode):
-            beta_values = plot_hf_lf_components(loc_data, fs_data01, lf_f_min, lf_f_max, hf_f_min, hf_f_max, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file,
+            beta_values = plot_hf_lf_components(loc_data, fs_data01, lf_f_min, lf_f_max, hf_f_min, hf_f_max, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]), outpath = out_path, file = file,
                                                 overwrite = overwrite, visualize = visualize)
             meta_data["beta lfp strength 1"][file_idx] = float(beta_values[0])
             meta_data["beta overall strength 1"][file_idx] = float(beta_values[1])
@@ -538,16 +638,21 @@ def main(mode = "power", overwrite = False, visualize = False):
             meta_data["beta non burst strength 1"][file_idx] = float(beta_values[3])
                         
         if ("overall pac" in mode):
-            pac_values = calculate_dmi(loc_data, fs_data01, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file,
+            pac_values = calculate_dmi(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]),
+                                       lf_f_min = float(meta_data["lf f min"][file_idx]), lf_f_max = float(meta_data["lf f max"][file_idx]),
+                                       hf_f_min = float(meta_data["hf f min"][file_idx]), hf_f_max = float(meta_data["hf f max"][file_idx]),
+                                       outpath = out_path, file = file,
                                        overwrite = overwrite, visualize = visualize)
             meta_data["pac overall strength 2"][file_idx] = float(pac_values[0])
             meta_data["pac burst strength 2"][file_idx] = float(pac_values[1])
             meta_data["pac non burst strength 2"][file_idx] = float(pac_values[2])
             
+            print(pac_values)
+            
         if("specific pac" in mode):
-            pac_values = calculate_spectograms(loc_data, fs_data01, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], 
-                                               lf_zoom_factor = meta_data["lf_zoom_factor"][file_idx], lf_offset_factor = meta_data["lf_offset_factor"][file_idx],
-                                               hf_zoom_factor = meta_data["hf_zoom_factor"][file_idx], hf_offset_factor = meta_data["hf_offset_factor"][file_idx], pac_thresh = meta_data["pac_thresh"][file_idx],
+            pac_values = calculate_spectograms(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]), 
+                                               lf_zoom_factor = float(meta_data["lf_zoom_factor"][file_idx]), lf_offset_factor = float(meta_data["lf_offset_factor"][file_idx]),
+                                               hf_zoom_factor = float(meta_data["hf_zoom_factor"][file_idx]), hf_offset_factor = float(meta_data["hf_offset_factor"][file_idx]), pac_thresh = float(meta_data["pac_thresh"][file_idx]),
                                                outpath = out_path, file = file, overwrite = overwrite, visualize = visualize)
             meta_data["pac burst strength 3"][file_idx] = float(pac_values[0])
             meta_data["pac non burst strength 3"][file_idx] = float(pac_values[1])
@@ -555,6 +660,18 @@ def main(mode = "power", overwrite = False, visualize = False):
             meta_data["pac non burst specificity 3"][file_idx] = float(pac_values[3])
             meta_data["pac burst specific strength 3"][file_idx] = float(pac_values[4])
             meta_data["pac non burst specific strength 3"][file_idx] = float(pac_values[5])
+            
+        if("dac" in mode): # Does not work, simply not enough data
+            raise AssertionError("Not enough data")
+            #===================================================================
+            # pac_values = calculate_sfc(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]),
+            #                            f_min_lf = float(meta_data["lf f min"][file_idx]), f_max_lf = float(meta_data["lf f max"][file_idx]), visualize = visualize, outpath = out_path,
+            #                            file = file, overwrite = overwrite)
+            # meta_data["dac 4"][file_idx] = float(pac_values[0])
+            #===================================================================
+        
+        if ("cnt_burst" in mode):
+            raise AssertionError("Not yet implemented")
         
         if (len(mode) == 3):
             meta_file.modify_sheet_from_dict("beta", meta_data)
@@ -563,11 +680,13 @@ def main(mode = "power", overwrite = False, visualize = False):
         
         plt.close("all")
     
-    if (len(mode != 3)):
+    if (len(mode) != 3):
         meta_file.modify_sheet_from_dict("beta", meta_data)
         meta_file.write_file()
     print("Terminated successfully")
     
-main(["power", "overall pac", "specific pac"], overwrite = True, visualize = True)
+#main(["power", "overall pac", "specific pac"], overwrite = False, visualize = True)
+#main(["overall pac"], overwrite = True, visualize = True)
+main(["overall pac"], overwrite = True, visualize = True)
 
 
