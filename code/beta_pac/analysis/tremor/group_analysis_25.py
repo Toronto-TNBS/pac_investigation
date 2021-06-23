@@ -5,7 +5,7 @@ Created on May 21, 2021
 '''
 
 import methods.data_io.ods as ods_reader
-import finn.statistical.generalized_linear_models as glmm
+import finn.statistical.glmm as glmm
 import numpy as np
 
 def main():
@@ -34,9 +34,9 @@ def main():
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
             
-            loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [0]))
+            loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [1]))
             data[-1].append(loc_data)
-            loc_data = np.concatenate((pre_data[row_idx, idx_lists_non_burst[idx_list_idx]], [1]))
+            loc_data = np.concatenate((pre_data[row_idx, idx_lists_non_burst[idx_list_idx]], [0]))
             data[-1].append(loc_data)
         loc_labels = list(); loc_labels.append("target_value") 
         for label_idx in idx_lists_burst[idx_list_idx][1:]:

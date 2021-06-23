@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import scipy.signal
 
 import finn.filters.frequency as ff
-import finn.cross_frequency_coupling.direct_modulation_index as dmi
+import finn.cfc.pac as pac
 
 import finn.misc.timed_pool as tp
 
@@ -162,19 +162,20 @@ def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_
             
     return (lf_tremor_strength, hf_tremor_strength, burst_tremor_strength, non_burst_tremor_strength)
 
-def calculate_dmi(data, fs_data01, peak_spread, peak_thresh,
+def calculate_dmi(data, fs_data01, peak_spread, peak_thresh, f_min, f_max,
                   visualize = True, outpath = None, file = None, overwrite = True):
     if (overwrite or os.path.exists(outpath + "data/2/" + file + ".pkl") == False):
     
         high_freq_component = ff.fir(np.asarray(data), 300, None, 1, fs_data01)
         #low_freq_component = ff.fir(np.asarray(data), filt_low, filt_high, 0.1, fs_data01)
-        low_freq_component = ff.fir(np.asarray(data), None, 50, 0.1, fs_data01)
+        #low_freq_component = ff.fir(np.asarray(data), None, 50, 0.1, fs_data01)
+        low_freq_component = ff.fir(np.asarray(data), f_min - 2, f_max + 1, 0.1, fs_data01)
         
         (burst_hf_data, non_burst_hf_data) = preprocess_data(high_freq_component, fs_data01, peak_spread, peak_thresh)
         
-        (score_default, best_fit_default, amp_signal_default) = dmi.run(low_freq_component, high_freq_component, 10, 1)
-        (score_burst, best_fit_burst, amp_signal_burst) = dmi.run(low_freq_component, burst_hf_data, 10, 1)
-        (score_non_burst, best_fit_non_burst, amp_signal_non_burst) = dmi.run(low_freq_component, non_burst_hf_data, 10, 1)
+        (score_default, best_fit_default, amp_signal_default) = pac.run_dmi(low_freq_component, high_freq_component, 10, 1)
+        (score_burst, best_fit_burst, amp_signal_burst) = pac.run_dmi(low_freq_component, burst_hf_data, 10, 1)
+        (score_non_burst, best_fit_non_burst, amp_signal_non_burst) = pac.run_dmi(low_freq_component, non_burst_hf_data, 10, 1)
         
         pickle.dump([best_fit_default, amp_signal_default, score_default,
                      best_fit_burst, amp_signal_burst, score_burst,
@@ -228,14 +229,14 @@ def calculate_spectograms_inner(data, window_width, fs,
     for f_idx in np.arange(f_min, f_max, f_window_step_sz):
         loc_dmi_lf_data = ff.fir(np.copy(data), f_idx - f_window_width/2, f_idx + f_window_width/2, filter_step_width, fs)        
         if ((loc_burst_hf_data != 0).all()):
-            (loc_dmi_score, _, _) = dmi.run(loc_dmi_lf_data, loc_burst_hf_data, 10, 1)
+            (loc_dmi_score, _, _) = pac.run_dmi(loc_dmi_lf_data, loc_burst_hf_data, 10, 1)
         else:
             loc_dmi_score = 0 #There cannot be any pack if there is no data in this segment
         loc_burst_dmi_scores.append(loc_dmi_score)
         
         loc_dmi_lf_data = ff.fir(np.copy(data), f_idx - f_window_width/2, f_idx + f_window_width/2, filter_step_width, fs)
         if ((loc_non_burst_hf_data != 0).all()):
-            (loc_dmi_score, _, _) = dmi.run(loc_dmi_lf_data, loc_non_burst_hf_data, 10, 1)
+            (loc_dmi_score, _, _) = pac.run_dmi(loc_dmi_lf_data, loc_non_burst_hf_data, 10, 1)
         else:
             loc_dmi_score = 0 #There cannot be any pack if there is no data in this segment
         loc_non_burst_dmi_scores.append(loc_dmi_score)
@@ -465,7 +466,7 @@ def main(mode = "power", overwrite = False, visualize = False):
         if (file == ""):
             continue
         
-        #------------------------------------------- if (file != "633-s1-1194"):
+        #--------------------------------------- if (file != "652-1538-TREMOR"):
             #---------------------------------------------------------- continue
         
         if (meta_data["valid_data"][file_idx] == 0):
@@ -499,7 +500,9 @@ def main(mode = "power", overwrite = False, visualize = False):
             meta_data["tremor non burst strength 1"][file_idx] = float(tremor_values[3])
                         
         if ("overall pac" in mode):
-            pac_values = calculate_dmi(loc_data, fs_data01, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file,
+            pac_values = calculate_dmi(loc_data, fs_data01, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx],
+                                       f_min = meta_data["hf f min"][file_idx], f_max = meta_data["hf f max"][file_idx],
+                                       outpath = out_path, file = file,
                                        overwrite = overwrite, visualize = visualize)
             meta_data["pac overall strength 2"][file_idx] = float(pac_values[0])
             meta_data["pac burst strength 2"][file_idx] = float(pac_values[1])
@@ -530,7 +533,7 @@ def main(mode = "power", overwrite = False, visualize = False):
     print("Terminated successfully")
     
 #main(["power", "overall pac", "specific pac"], overwrite = False, visualize = True)
-main(["specific pac"], overwrite = False, visualize = True)
+main(["overall pac"], overwrite = True, visualize = True)
 #main(["power"], overwrite = True, visualize = True)
 
 

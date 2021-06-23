@@ -28,9 +28,9 @@ def get_values(path, subpath, mode, type):
         if (int(meta_info["valid_data"][f_idx]) == 0):
             continue
         
-        if (type == "hf beta" and int(int(float(meta_info["hf auto"][f_idx]))) == 0):
+        if (type == "hf tremor" and int(int(float(meta_info["hf auto"][f_idx]))) == 0):
             continue
-        if (type == "hf non beta" and int(float(meta_info["hf auto"][f_idx])) == 1):
+        if (type == "hf non tremor" and int(float(meta_info["hf auto"][f_idx])) == 1):
             continue
                 
         data = pickle.load(open(path + mode + subpath + f_name + ".pkl", "rb"))
@@ -89,12 +89,12 @@ def main(path, subpath, mode, type, axes):
     print("non burst", np.mean(values[:, 2]), np.sqrt(np.var(values[:, 2])))
 
 (fig, axes) = plt.subplots(2, 2)
-main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "beta", "hf beta", axes[0, :])
-main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "beta", "hf non beta", axes[1, :])
-axes[0, 0].set_title("Highly beta, mostly burst")
-axes[0, 1].set_title("Highly beta, mostly non burst")
-axes[1, 0].set_title("Little beta, mostly burst")
-axes[1, 1].set_title("Little beta, mostly non burst")
+main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "tremor", "hf tremor", axes[0, :])
+main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor", axes[1, :])
+axes[0, 0].set_title("Highly tremor, mostly burst")
+axes[0, 1].set_title("Highly tremor, mostly non burst")
+axes[1, 0].set_title("Little tremor, mostly burst")
+axes[1, 1].set_title("Little tremor, mostly non burst")
 plt.tight_layout()
 plt.show(block = True)
 

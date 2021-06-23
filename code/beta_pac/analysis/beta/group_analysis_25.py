@@ -9,19 +9,17 @@ import finn.statistical.glmm as glmm
 import numpy as np
 import os
 
-#Give continuous beta metric a try!
-
 def main():
     full_data = ods_reader.ods_data("../../../../data/meta.ods")
     (pre_labels, pre_data) = full_data.get_sheet_as_array("beta")
     
-    targets = ["strength", "specificity", "specific strength"]
+    targets = ["strength"]
     patient_id_idx = pre_labels.index("patient_id")
     trial_idx = pre_labels.index("trial")
     lf_beta_idx = pre_labels.index("lf auto")
     lf_beta_idx = pre_labels.index("beta lfp strength 1")
     hf_beta_idx = pre_labels.index("hf auto")
-    hf_beta_idx = pre_labels.index("beta overall strength 1")
+    hf_beta_idx = pre_labels.index("beta overall strength 1") 
     pac_burst_strength_idx = pre_labels.index("pac burst strength 2")
     pac_non_burst_strength_idx = pre_labels.index("pac non burst strength 2")
     valid_idx = pre_labels.index("valid_data")

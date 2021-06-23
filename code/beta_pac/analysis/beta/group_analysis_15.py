@@ -5,14 +5,14 @@ Created on May 21, 2021
 '''
 
 import methods.data_io.ods as ods_reader
-import finn.statistical.generalized_linear_models as glmm
+import finn.statistical.glmm as glmm
 import numpy as np
 
 def main():
     full_data = ods_reader.ods_data("../../../../data/meta.ods")
     (pre_labels, pre_data) = full_data.get_sheet_as_array("beta")
     
-    targets = ["strength", "specificity", "specific strength"]
+    targets = ["strength"]
     patient_id_idx = pre_labels.index("patient_id")
     trial_idx = pre_labels.index("trial")
     beta_burst_strength_idx = pre_labels.index("beta burst strength 1")
@@ -34,9 +34,9 @@ def main():
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
             
-            loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [0]))
+            loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [1]))
             data[-1].append(loc_data)
-            loc_data = np.concatenate((pre_data[row_idx, idx_lists_non_burst[idx_list_idx]], [1]))
+            loc_data = np.concatenate((pre_data[row_idx, idx_lists_non_burst[idx_list_idx]], [0]))
             data[-1].append(loc_data)
         loc_labels = list(); loc_labels.append("target_value") 
         for label_idx in idx_lists_burst[idx_list_idx][1:]:
@@ -56,7 +56,7 @@ def main():
         tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
         (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
         
-        print(np.asarray(tmp))
+        print(targets[data_idx], np.asarray(tmp))
         
         np.save("../../../../results/beta/stats/15/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
     

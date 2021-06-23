@@ -5,14 +5,14 @@ Created on May 21, 2021
 '''
 
 import methods.data_io.ods as ods_reader
-import finn.statistical.generalized_linear_models as glmm
+import finn.statistical.glmm as glmm
 import numpy as np
 
 def main3():
     full_data = ods_reader.ods_data("../../../../data/meta.ods")
     (pre_labels, pre_data) = full_data.get_sheet_as_array("tremor")
     
-    targets = ["lf tremor", "hf tremor", "hf burst tremor", "hf non burst tremor"]
+    targets = ["lf tremor"]
     patient_id_idx = pre_labels.index("patient_id")
     trial_idx = pre_labels.index("trial")
     tremor_burst_strength_idx = pre_labels.index("tremor burst strength 1")
@@ -34,9 +34,9 @@ def main3():
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
             
-            loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [0]))
+            loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [1]))
             data[-1].append(loc_data)
-            loc_data = np.concatenate((pre_data[row_idx, idx_lists_non_burst[idx_list_idx]], [1]))
+            loc_data = np.concatenate((pre_data[row_idx, idx_lists_non_burst[idx_list_idx]], [0]))
             data[-1].append(loc_data)
         loc_labels = list(); loc_labels.append("target_value") 
         for label_idx in idx_lists_burst[idx_list_idx][1:]:
