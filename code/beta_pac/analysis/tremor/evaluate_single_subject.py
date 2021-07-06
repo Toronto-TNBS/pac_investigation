@@ -207,6 +207,72 @@ def calculate_dmi(data, fs_data01, peak_spread, peak_thresh, f_min, f_max,
         
     return (score_default, score_burst, score_non_burst)
 
+import finn.basic.downsampling as ds
+
+def calculate_dmi_acc(data, fs_data01, data_acc, fs_data01_acc, peak_spread, peak_thresh, f_min, f_max,
+                  visualize = True, outpath = None, file = None, overwrite = True):
+    if (overwrite or os.path.exists(outpath + "data/4/" + file + ".pkl") == False):
+    
+        high_freq_component = ff.fir(np.asarray(data), 300, None, 1, fs_data01)
+        #low_freq_component = ff.fir(np.asarray(data), filt_low, filt_high, 0.1, fs_data01)
+        #low_freq_component = ff.fir(np.asarray(data), None, 50, 0.1, fs_data01)
+        low_freq_component = ff.fir(np.asarray(data_acc), f_min - 2, f_max + 1, 0.1, fs_data01_acc)
+        
+        #------------------------------------------------------------------ try:
+            # plt.plot(np.angle(scipy.signal.hilbert(ff.fir(np.asarray(data), f_min - 2, f_max + 1, 0.1, fs_data01)), deg = True))
+            # plt.plot(np.arange(0, len(data) -int(fs_data01/fs_data01_acc), int(fs_data01/fs_data01_acc)), np.angle(scipy.signal.hilbert(low_freq_component), deg = True))
+#------------------------------------------------------------------------------ 
+            #-------------------------------------------- plt.show(block = True)
+        #--------------------------------------------------------------- except:
+            #-------------------------------------------------------------- try:
+                #----------------------------------------------------- plt.clf()
+                # plt.plot(np.angle(scipy.signal.hilbert(ff.fir(np.asarray(data), f_min - 2, f_max + 1, 0.1, fs_data01)), deg = True))
+                # plt.plot(np.arange(0, len(data), int(fs_data01/fs_data01_acc)), np.angle(scipy.signal.hilbert(low_freq_component), deg = True))
+#------------------------------------------------------------------------------ 
+                #---------------------------------------- plt.show(block = True)
+            #----------------------------------------------------------- except:
+                #---------------------------------------------------- print("A")
+        
+        low_freq_component = ds.run(low_freq_component, int(fs_data01_acc), int(fs_data01))
+        low_freq_component = low_freq_component[0:len(high_freq_component)]
+        high_freq_component = high_freq_component[0:len(low_freq_component)]
+        
+        (burst_hf_data, non_burst_hf_data) = preprocess_data(high_freq_component, fs_data01, peak_spread, peak_thresh)
+        
+        (score_default, best_fit_default, amp_signal_default) = pac.run_dmi(low_freq_component, high_freq_component, 10, 1)
+        (score_burst, best_fit_burst, amp_signal_burst) = pac.run_dmi(low_freq_component, burst_hf_data, 10, 1)
+        (score_non_burst, best_fit_non_burst, amp_signal_non_burst) = pac.run_dmi(low_freq_component, non_burst_hf_data, 10, 1)
+        
+        pickle.dump([best_fit_default, amp_signal_default, score_default,
+                     best_fit_burst, amp_signal_burst, score_burst,
+                     best_fit_non_burst, amp_signal_non_burst, score_non_burst], open(outpath + "data/2/" + file + ".pkl", "wb"))
+        
+    else:
+        
+        tmp = pickle.load(open(outpath + "data/4/" + file + ".pkl", "rb"))
+        best_fit_default = tmp[0]; amp_signal_default = tmp[1]; score_default = tmp[2];
+        best_fit_burst = tmp[3]; amp_signal_burst = tmp[4]; score_burst = tmp[5];
+        best_fit_non_burst = tmp[6]; amp_signal_non_burst = tmp[7]; score_non_burst = tmp[8];
+    
+    if (visualize):
+        (fig, axes) = plt.subplots(3, 1)
+        axes[0].set_title("default: original data, score: %.2f" % (score_default,))
+        axes[0].plot(best_fit_default)
+        axes[0].plot(amp_signal_default)
+        
+        axes[1].set_title("burst: smoothed data, score: %.2f" % (score_burst,))
+        axes[1].plot(best_fit_burst)
+        axes[1].plot(amp_signal_burst)
+        
+        axes[2].set_title("non burst: smoothed data, score: %.2f" % (score_non_burst,))
+        axes[2].plot(best_fit_non_burst)
+        axes[2].plot(amp_signal_non_burst)
+        
+        fig.set_tight_layout(tight = True)
+        fig.savefig(outpath + "img/4/" + file + image_format)
+        
+    return (score_default, score_burst, score_non_burst)
+
 def calculate_spectograms_inner(data, window_width, fs,
                                 f_min, f_max, f_window_width, f_window_step_sz,
                                 start_idx, filter_step_width = 1, peak_spread = 1.5, peak_thresh = 1.1):
@@ -455,7 +521,37 @@ def normalize_data(data, min_val, max_val, radius = 3):
     data = skimage.morphology.dilation(data, skimage.morphology.disk(radius))
     
     return data
-        
+
+def count_bursts(data, fs, peak_spread, peak_thresh, outpath, file):
+    #-------------------------------------- data = ff.fir(data, 70, None, 1, fs)
+    #-------------------------------------- data = ff.fir(data, 135, 125, 1, fs)
+    #-------------------------------------- data = ff.fir(data, 205, 195, 1, fs)
+    #-------------------------------------- data = ff.fir(data, 405, 395, 1, fs)
+    
+    data = ff.fir(data, 300, None, 1, fs)
+    data = np.copy(data)
+    data[data > 0] = 0
+    
+    (peaks, _) = scipy.signal.find_peaks(np.abs(data), height = peak_thresh)
+    peak_data = np.zeros(data.shape)
+    peak_data[peaks] = 1
+    binarized_data = methods.detection.bursts.identify_peaks(ff.fir(np.copy(np.asarray(data)), 300, None, 1, fs), fs, 70, None, peak_spread, peak_thresh)
+    
+    burst_data = peak_data[np.argwhere(binarized_data == 1).squeeze()]
+    non_burst_data = peak_data[np.argwhere(binarized_data == 0).squeeze()]
+    
+    burst_spikes_percentage = np.sum(burst_data) / np.sum(peak_data) if (len(peak_data) != 0) else -1
+    non_burst_spikes_percentage = np.sum(non_burst_data) / np.sum(peak_data) if (len(peak_data) != 0) else -1
+    
+    spikes_per_second = np.sum(peak_data) / len(peak_data) * fs if (len(peak_data) != 0) else -1
+    burst_spikes_per_second = np.sum(burst_data)/len(burst_data) * fs if (len(burst_data) != 0) else -1
+    non_burst_spikes_per_second = np.sum(non_burst_data)/len(non_burst_data) * fs if (len(non_burst_data) != 0) else -1
+    
+    pickle.dump((burst_spikes_percentage, non_burst_spikes_percentage, burst_spikes_per_second, non_burst_spikes_per_second, spikes_per_second), open(outpath + "data/7/" + file + ".pkl", "wb"))
+    print((burst_spikes_percentage, non_burst_spikes_percentage, burst_spikes_per_second, non_burst_spikes_per_second, spikes_per_second))
+    
+    return (float(burst_spikes_percentage), float(non_burst_spikes_percentage), float(burst_spikes_per_second), float(non_burst_spikes_per_second), float(spikes_per_second))
+     
 def main(mode = "power", overwrite = False, visualize = False):
     meta_file = methods.data_io.ods.ods_data("../../../../data/meta.ods")
     meta_data = meta_file.get_sheet_as_dict("tremor")
@@ -466,7 +562,7 @@ def main(mode = "power", overwrite = False, visualize = False):
         if (file == ""):
             continue
         
-        #--------------------------------------- if (file != "652-1538-TREMOR"):
+        #---------------- if (file != "669-645-TREMOR-MOV-DESYNCH-TREMOR-REST"):
             #---------------------------------------------------------- continue
         
         if (meta_data["valid_data"][file_idx] == 0):
@@ -478,8 +574,12 @@ def main(mode = "power", overwrite = False, visualize = False):
             file_hdr = pickle.load(open(in_path+file+".txt_conv_hdr.pkl", "rb"))
             file_data = pickle.load(open(in_path+file+".txt_conv_data.pkl", "rb"))
             
-            fs_data01 = int(file_hdr[20]['fs'])       
+            fs_data01 = int(file_hdr[20]['fs'])
             loc_data = ff.fir(np.asarray(file_data[20]), 1, None, 0.1, fs_data01)
+            
+            if (21 in file_hdr.keys()):
+                fs_data01_acc = int(file_hdr[21]['fs'])
+                loc_data_acc = ff.fir(np.asarray(file_data[21]), 1, None, 0.1, fs_data01)
         else:
             file_hdr = None
             file_data = None
@@ -519,21 +619,43 @@ def main(mode = "power", overwrite = False, visualize = False):
             meta_data["pac non burst specificity 3"][file_idx] = float(pac_values[3])
             meta_data["pac burst specific strength 3"][file_idx] = float(pac_values[4])
             meta_data["pac non burst specific strength 3"][file_idx] = float(pac_values[5])
+                        
+        if ("acc pac" in mode):
+            if (21 not in file_hdr.keys()):
+                continue
+            pac_values = calculate_dmi_acc(loc_data, fs_data01, loc_data_acc, fs_data01_acc,
+                                       peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx],
+                                       f_min = meta_data["hf f min"][file_idx], f_max = meta_data["hf f max"][file_idx],
+                                       outpath = out_path, file = file,
+                                       overwrite = overwrite, visualize = visualize)
+            meta_data["pac overall strength 4"][file_idx] = float(pac_values[0])
+            meta_data["pac burst strength 4"][file_idx] = float(pac_values[1])
+            meta_data["pac non burst strength 4"][file_idx] = float(pac_values[2])
+            
+        if ("cnt_burst" in mode):
+            score = count_bursts(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]),
+                                 peak_thresh = float(meta_data["peak_thresh"][file_idx]), outpath = out_path, file = file)
+            
+            meta_data["spikes_within"][file_idx] = score[0]
+            meta_data["spikes_outside"][file_idx] = score[1] 
+            meta_data["spikes_within_per_second"][file_idx] = score[2]
+            meta_data["spikes_outside_per_second"][file_idx] = score[3]
+            meta_data["spikes_per_second"][file_idx] = score[4] 
         
-        if (len(mode) == 3):
+        if (len(mode) == 4):
             meta_file.modify_sheet_from_dict("tremor", meta_data)
             meta_file.write_file()
         
         
         plt.close("all")
     
-    if (len(mode) != 3):
+    if (len(mode) != 4):
         meta_file.modify_sheet_from_dict("tremor", meta_data)
         meta_file.write_file()
     print("Terminated successfully")
     
 #main(["power", "overall pac", "specific pac"], overwrite = False, visualize = True)
-main(["overall pac"], overwrite = True, visualize = True)
+main(["cnt_burst"], overwrite = True, visualize = True)
 #main(["power"], overwrite = True, visualize = True)
 
 

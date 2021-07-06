@@ -148,9 +148,8 @@ def read_block_hdr(file, start_block):
 def read_analog_signal(file, start_block, block_info):
     return file[(start_block + 20):(start_block + int(block_info["items"] * 2 + 20))].view(dtype = "i2")
 
-def read_wavmks(start_block, ch_infos, ch_idx, block_info, file, file_info):
+def read_wavmks(start_block, ch_infos, ch_idx, block_info, file, file_info, spike_data):
     fs = 1/(ch_infos[-1]["l_chan_dvd"]*file_info["dtime_base"]*file_info["us_per_time"])
-    spike_data = np.zeros((int(file_info["max_ftime"] * file_info["dtime_base"] * fs,)))
     
     loc_start = start_block + 20
     
@@ -164,16 +163,13 @@ def read_wavmks(start_block, ch_infos, ch_idx, block_info, file, file_info):
     #===============================================================
     for spike_idx in range(block_info["items"]):
         
-        if (spike_idx == 5):
-            print("A")
-        
         start = loc_start + 0 + int(spike_idx * (wave_info["wavmk_sz"]))
         start_time = file[start:(start + 4)].view(dtype = "<u4")[0] * file_info["dtime_base"] * fs
                 
         start = loc_start + wave_info["header_sz"] + int(spike_idx * (wave_info["wavmk_sz"]))
         spike = file[start:(start + wave_info["spike_sz"])].view(dtype = "<i2")
         
-        print(start_time/fs, spike_data.shape)
+        #print(start_time/fs, spike_data.shape)
         if (int(start_time + wave_info["spike_sz"]/2) < len(spike_data)):
             spike_data[int(start_time):(int(start_time + wave_info["spike_sz"]/2))] = spike
     #===============================================================
@@ -194,7 +190,55 @@ def read_wavmks(start_block, ch_infos, ch_idx, block_info, file, file_info):
     #===============================================================
     
     
-    return spike_data.tolist()
+    return spike_data
+
+#-- def read_wavmks(start_block, ch_infos, ch_idx, block_info, file, file_info):
+    # fs = 1/(ch_infos[-1]["l_chan_dvd"]*file_info["dtime_base"]*file_info["us_per_time"])
+    # spike_data = np.zeros((int(file_info["max_ftime"] * file_info["dtime_base"] * fs,)))
+#------------------------------------------------------------------------------ 
+    #---------------------------------------------- loc_start = start_block + 20
+#------------------------------------------------------------------------------ 
+    #-------------------------------------------------------- wave_info = dict()
+    #----------------------- wave_info["spike_sz"] = ch_infos[ch_idx]["n_extra"]
+    #------------------------------------------------ wave_info["header_sz"] = 8
+    #---- wave_info["wavmk_sz"] = wave_info["header_sz"] + wave_info["spike_sz"]
+#------------------------------------------------------------------------------ 
+    #---------- #===============================================================
+    #------------------------------------------------------------ # plt.figure()
+    #---------- #===============================================================
+    #------------------------------ for spike_idx in range(block_info["items"]):
+#------------------------------------------------------------------------------ 
+        #-------------------------------------------------- if (spike_idx == 5):
+            #-------------------------------------------------------- print("A")
+#------------------------------------------------------------------------------ 
+        #------ start = loc_start + 0 + int(spike_idx * (wave_info["wavmk_sz"]))
+        # start_time = file[start:(start + 4)].view(dtype = "<u4")[0] * file_info["dtime_base"] * fs
+#------------------------------------------------------------------------------ 
+        # start = loc_start + wave_info["header_sz"] + int(spike_idx * (wave_info["wavmk_sz"]))
+        # spike = file[start:(start + wave_info["spike_sz"])].view(dtype = "<i2")
+#------------------------------------------------------------------------------ 
+        #-------------------------------- print(start_time/fs, spike_data.shape)
+        #----- if (int(start_time + wave_info["spike_sz"]/2) < len(spike_data)):
+            # spike_data[int(start_time):(int(start_time + wave_info["spike_sz"]/2))] = spike
+    #---------- #===============================================================
+    #----------------------------------------------------- #     plt.plot(spike)
+    #-------------------------------------------------- # plt.show(block = True)
+    #---------- #===============================================================
+#------------------------------------------------------------------------------ 
+    #---------- #===============================================================
+    #------------------------------------------------------------ # plt.figure()
+    #----------------------------------------------- # offset = start_block + 20
+    #------------------------------------------------ # for x in range(2,100,2):
+    #---- #     plt.plot(file[(offset + 8):(offset + 8 + x)].view(dtype = "i2"))
+    #--------------------------------------------- #     plt.show(block = False)
+    #------------------------------------------------------------ #     print(x)
+    #-------------------------------------------------------- #     plt.pause(2)
+    #----------------------------------------------------------- #     plt.clf()
+    #------------------------------------------------------------- # plt.close()
+    #---------- #===============================================================
+#------------------------------------------------------------------------------ 
+#------------------------------------------------------------------------------ 
+    #------------------------------------------------ return spike_data.tolist()
 
 def read_data(file, file_info, ch_infos):
     
@@ -205,23 +249,78 @@ def read_data(file, file_info, ch_infos):
         ch_data.append(list())
         
         start_block = ch_infos[ch_idx]["firstblock"]
-        for _ in range(ch_infos[ch_idx]["blocks"]):
-            block_info = read_block_hdr(file, start_block)
-
-            if (ch_infos[ch_idx]["kind"] == 1):
+        if (ch_infos[ch_idx]["kind"] == 1):
+            for _ in range(ch_infos[ch_idx]["blocks"]):
+                block_info = read_block_hdr(file, start_block)                
                 ch_data[-1].extend(read_analog_signal(file, start_block, block_info))
-            
-            #Header is 8 bytes [4 startbytes, 4 pattern_id_bytes]
-            if (ch_infos[ch_idx]["kind"] == 6):
-                ch_data[-1].extend(read_wavmks(start_block, ch_infos, ch_idx, block_info, file, file_info))
-            
-            start_block = block_info["succ_block"]
+                
+                start_block = block_info["succ_block"]
+        
+        fs = 1/(ch_infos[-1]["l_chan_dvd"]*file_info["dtime_base"]*file_info["us_per_time"])
+        spike_data = np.zeros((int(file_info["max_ftime"] * file_info["dtime_base"] * fs,)))
+        if (ch_infos[ch_idx]["kind"] == 6):
+            for _ in range(ch_infos[ch_idx]["blocks"]):
+                block_info = read_block_hdr(file, start_block)
+                #Header is 8 bytes [4 startbytes, 4 pattern_id_bytes]
+                spike_data = read_wavmks(start_block, ch_infos, ch_idx, block_info, file, file_info, spike_data)
+                
+                
+                start_block = block_info["succ_block"]
+            spike_data = spike_data.tolist()
+            ch_data[-1].extend(spike_data)
         
         ch_data[-1] = np.asarray(ch_data[-1], dtype = np.float32)
         ch_data[-1] *= ch_infos[ch_idx]["scale"] / magic_numbers["scale_multiplier"]
         ch_data[-1] += ch_infos[ch_idx]["offset"]
         
     return ch_data
+
+#------------------------------------- def read_data(file, file_info, ch_infos):
+#------------------------------------------------------------------------------ 
+    #---------------------------------------------------------- ch_data = list()
+    #------------------------------- for ch_idx in range(file_info["channels"]):
+        #---------------------------- if (ch_infos[ch_idx]["firstblock"] == -1):
+            #---------------------------------------------------------- continue
+        #------------------------------------------------ ch_data.append(list())
+#------------------------------------------------------------------------------ 
+        #-------------------------- start_block = ch_infos[ch_idx]["firstblock"]
+        #--------------------------- for _ in range(ch_infos[ch_idx]["blocks"]):
+            #-------------------- block_info = read_block_hdr(file, start_block)
+#------------------------------------------------------------------------------ 
+            #------------------------------- if (ch_infos[ch_idx]["kind"] == 1):
+                # ch_data[-1].extend(read_analog_signal(file, start_block, block_info))
+#------------------------------------------------------------------------------ 
+            #------------- #Header is 8 bytes [4 startbytes, 4 pattern_id_bytes]
+            #------------------------------- if (ch_infos[ch_idx]["kind"] == 6):
+                # ch_data[-1].extend(read_wavmks(start_block, ch_infos, ch_idx, block_info, file, file_info))
+#------------------------------------------------------------------------------ 
+            #---------------------------- start_block = block_info["succ_block"]
+#------------------------------------------------------------------------------ 
+        #------------- ch_data[-1] = np.asarray(ch_data[-1], dtype = np.float32)
+        # ch_data[-1] *= ch_infos[ch_idx]["scale"] / magic_numbers["scale_multiplier"]
+        #----------------------------- ch_data[-1] += ch_infos[ch_idx]["offset"]
+#------------------------------------------------------------------------------ 
+    #------------------------------------------------------------ return ch_data
+
+def test():
+    filePath = "/home/voodoocode/Downloads/2891/tmp4.smr"    
+    filePath = "/home/voodoocode/Downloads/2891/2851_s1_635_power_pinch.smr"
+    
+    file = np.memmap(filePath, dtype='u1', offset=0, mode='r')
+    file_info = read_file_info(file)
+    (file_info, ch_infos) = read_channel_header(file, file_info)
+    data = read_data(file, file_info, ch_infos)
+    
+    ch_cnt = len(data)
+    (fig, axes) = plt.subplots(ch_cnt, 1)
+    for idx in range(ch_cnt):
+        axes[idx].plot(data[idx])
+        print(ch_infos[idx])
+        
+    plt.show(block = True)
+    
+    print("Terminated successfully")
+    quit()
 
 def __mainInner(basePath, file, acc_channel, overwrite):
     filePath = basePath + file + ".smr"
@@ -306,6 +405,8 @@ def __mainInner(basePath, file, acc_channel, overwrite):
     pickle.dump(hdr, open(filePath + ".txt_conv_hdr.pkl", "wb"))
     pickle.dump(data, open(filePath + ".txt_conv_data.pkl", "wb"))
 
+
+test()
 main("/mnt/data/Professional/UHN/pac_investigation/data/tremor/meta.ods",
      "/mnt/data/Professional/UHN/pac_investigation/data/tremor/", 4, False)
 print("Terminated successfully")

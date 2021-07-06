@@ -88,7 +88,7 @@ def visualization(lfp_data, hf_default_data, txt_data, annotate = False):
 
     
     plt.show(block = True)    
-main(write = True, annotate = True)
+main(write = False, annotate = True)
 
 
 

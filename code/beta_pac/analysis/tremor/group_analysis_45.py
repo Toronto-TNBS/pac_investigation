@@ -17,8 +17,8 @@ def main():
     trial_idx = pre_labels.index("trial")
     lf_beta_idx = pre_labels.index("tremor lfp strength 1")
     hf_beta_idx = pre_labels.index("tremor overall strength 1") 
-    pac_burst_strength_idx = pre_labels.index("pac burst strength 2")
-    pac_non_burst_strength_idx = pre_labels.index("pac non burst strength 2")
+    pac_burst_strength_idx = pre_labels.index("pac burst strength 4")
+    pac_non_burst_strength_idx = pre_labels.index("pac non burst strength 4")
     valid_idx = pre_labels.index("valid_data")
     pre_labels = [pre_label.replace(" auto","") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
     pre_labels = [pre_label.replace("tremor lfp strength 1","lf") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
@@ -38,6 +38,9 @@ def main():
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
             
+            if (pre_data[row_idx, pac_burst_strength_idx] == ""):
+                continue
+            
             loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [1]))
             data[-1].append(loc_data)
             loc_data = np.concatenate((pre_data[row_idx, idx_lists_non_burst[idx_list_idx]], [0]))
@@ -50,8 +53,8 @@ def main():
 
     data = np.asarray(data, dtype = np.float32)
     
+    formula = "target_value ~ burst + (1|patient_id) + (1|trial)"
     formula = "target_value ~ burst + lf + hf + (1|patient_id) + (1|trial)"
-    #formula = "target_value ~ burst + (1|patient_id) + (1|trial)"
     #labels => ['target_value', 'patient id', 'trial', 'burst']
     factor_type = ["continuous", "continuous", "continuous", "categorical", "categorical", "categorical"] 
     contrasts = "list(target_value = contr.sum, lf = contr.sum, hf = contr.sum, burst = contr.sum, patient_id = contr.sum, trial = contr.sum)"
@@ -63,7 +66,7 @@ def main():
         
         print(np.asarray(tmp))
         
-        np.save("../../../../results/tremor/stats/25/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        np.save("../../../../results/tremor/stats/45/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
     
     
 main()

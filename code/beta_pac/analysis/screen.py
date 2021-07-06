@@ -19,31 +19,44 @@ import finn.filters.frequency as ff
         
 import os        
 
-def main(mode = "tremor"):
+def main(mode = "beta"):
     meta = methods.data_io.ods.ods_data("../../../data/meta.ods")
     meta_data = meta.get_sheet_as_dict(mode)
     
     in_path = "../../../data/"+mode+"/data_for_python/"
     for (file_idx, file) in enumerate(meta_data["file"]):
         
+        print(file)
+        
         if (file == ""):
             continue
         
-        if (meta_data["height-checked"][file_idx] == 1):
+        if (file != "2781_s2_147-BETA"):
             continue
+        
+        #---------------------- if (meta_data["height-checked"][file_idx] == 1):
+            #---------------------------------------------------------- continue
         
         print(file)
         
         file_hdr = pickle.load(open(in_path+file+".txt_conv_hdr.pkl", "rb"))
         file_data = np.asarray(pickle.load(open(in_path+file+".txt_conv_data.pkl", "rb"))[20])
-        file_data = ff.fir(file_data, 70, None, 1, int(file_hdr[20]['fs']))  
-        file_data = ff.fir(file_data, 135, 125, 1, int(file_hdr[20]['fs']))  
-        file_data = ff.fir(file_data, 205, 195, 1, int(file_hdr[20]['fs']))  
-        file_data = ff.fir(file_data, 405, 395, 1, int(file_hdr[20]['fs']))  
+        
+        file_data = ff.fir(file_data, 300, None, 1, int(file_hdr[20]['fs']))
+        
+        #--- file_data = ff.fir(file_data, 70, None, 1, int(file_hdr[20]['fs']))
+        #--- file_data = ff.fir(file_data, 135, 125, 1, int(file_hdr[20]['fs']))
+        #--- file_data = ff.fir(file_data, 205, 195, 1, int(file_hdr[20]['fs']))
+        #--- file_data = ff.fir(file_data, 405, 395, 1, int(file_hdr[20]['fs']))
+        
         file_data_mod = np.copy(file_data)
         file_data_mod[file_data > 0] = 0
         height = meta_data["peak_thresh"][file_idx] if (meta_data["peak_thresh"][file_idx] != "") else 0
-        (peaks, _) = scipy.signal.find_peaks(np.abs(file_data_mod), height = height)
+        (peaks, _) = scipy.signal.find_peaks(np.abs(file_data_mod), height = float(height))
+        
+        data2 = np.asarray(pickle.load(open(in_path+file+".txt_conv_data.pkl", "rb"))[20])
+        print(len(peaks), len(peaks)/len(data2) * int(file_hdr[20]['fs']))
+        
         
         (fig, axes) = plt.subplots(2, 1)
         axes[0].plot(file_data)

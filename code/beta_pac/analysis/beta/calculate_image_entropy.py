@@ -19,8 +19,8 @@ def main():
 #    img3 = imageio.imread("/home/voodoocode/Documents/professional/UHN/pac_investigation/results/beta/img/3/2623-s1-130.png")[:, :, 0]
 #    img4 = imageio.imread("/home/voodoocode/Documents/professional/UHN/pac_investigation/results/beta/img/3/2626-s4-568-b.png")[:, :, 0]
     
-    img3 = pickle.load(open("/home/voodoocode/Documents/professional/UHN/pac_investigation/results/beta/data/3/2623-s1-130.pkl", "rb"))
-    img4 = pickle.load(open("/home/voodoocode/Documents/professional/UHN/pac_investigation/results/beta/data/3/2626-s4-568-b.pkl", "rb"))
+    img3 = pickle.load(open("/mnt/data/Professional/UHN/pac_investigation/results/beta/data/3/2623-s1-130.pkl", "rb"))
+    img4 = pickle.load(open("/mnt/data/Professional/UHN/pac_investigation/results/beta/data/3/2626-s4-568-b.pkl", "rb"))
 
     #print(calc_entropy(img1))
     #print(calc_entropy(img2))
@@ -67,4 +67,6 @@ def calc_entropy(data, h_bin_cnt = 16, v_bin_cnt = 16):
     psd = psd.transpose()
     
     return -np.sum(psd[psd.nonzero()] * np.log2(psd[psd.nonzero()]))
+
+#main()
 
