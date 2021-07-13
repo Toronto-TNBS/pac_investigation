@@ -302,14 +302,19 @@ def read_data(file, file_info, ch_infos):
 #------------------------------------------------------------------------------ 
     #------------------------------------------------------------ return ch_data
 
+def read_file(file_path):
+    file = np.memmap(file_path, dtype='u1', offset=0, mode='r')
+    file_info = read_file_info(file)
+    (file_info, ch_infos) = read_channel_header(file, file_info)
+    data = read_data(file, file_info, ch_infos)
+    
+    return (file_info, ch_infos, data)
+
 def test():
     filePath = "/home/voodoocode/Downloads/2891/tmp4.smr"    
     filePath = "/home/voodoocode/Downloads/2891/2851_s1_635_power_pinch.smr"
     
-    file = np.memmap(filePath, dtype='u1', offset=0, mode='r')
-    file_info = read_file_info(file)
-    (file_info, ch_infos) = read_channel_header(file, file_info)
-    data = read_data(file, file_info, ch_infos)
+    (file_info, ch_infos, data) = read_file(filePath)
     
     ch_cnt = len(data)
     (fig, axes) = plt.subplots(ch_cnt, 1)

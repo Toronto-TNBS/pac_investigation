@@ -159,7 +159,7 @@ def main2():
         tmp = glmm.run(data[data_idx, np.argwhere(data[data_idx, :, -1] == 0).squeeze(), :], labels[data_idx], factor_type, formula, contrasts, data_type)
         (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
         
-        print(targets[data_idx], np.asarray(tmp))
+        print("non structured", targets[data_idx], np.asarray(tmp))
         
         np.save("non structured", "../../../../results/beta/stats/17/stats_ns_" + targets[data_idx] + ".npy", np.asarray(tmp))
     

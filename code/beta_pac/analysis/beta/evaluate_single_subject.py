@@ -24,18 +24,19 @@ import scipy.stats
 
 thread_cnt = 11
 #thread_cnt = 1
-image_format = ".png"
+#image_format = ".png"
+image_format = ".svg"
 
 def preprocess_data(in_data, fs, peak_spread, peak_thresh):
     in_data = np.copy(in_data)
+    binarized_data = methods.detection.bursts.identify_peaks(in_data, fs, 70, None, peak_spread, peak_thresh, "negative", "auto")
     
-    burst_data = transform_burst(in_data, fs, 70, None, peak_spread, peak_thresh)
-    non_burst_data = transform_non_burst(in_data, fs, 70, None, peak_spread, peak_thresh)
+    burst_data = transform_burst(in_data, binarized_data)
+    non_burst_data = transform_non_burst(in_data, binarized_data)
     
     return (burst_data, non_burst_data)
 
-def transform_burst(in_data, fs, filter_f_min, filter_f_max, peak_spread, peak_thresh):
-    binarized_data = methods.detection.bursts.identify_peaks(in_data, fs, filter_f_min, filter_f_max, peak_spread, peak_thresh)
+def transform_burst(in_data, binarized_data):
             
     out_data = np.zeros(in_data.shape)
     out_data[np.argwhere(binarized_data == 1).squeeze()] = in_data[np.argwhere(binarized_data == 1).squeeze()]
@@ -44,11 +45,10 @@ def transform_burst(in_data, fs, filter_f_min, filter_f_max, peak_spread, peak_t
     
     return out_data
 
-def transform_non_burst(in_data, fs, filter_f_min, filter_f_max, peak_spread, peak_thresh):
-    binarized_data = methods.detection.bursts.identify_peaks(in_data, fs, filter_f_min, filter_f_max, peak_spread, peak_thresh)
+def transform_non_burst(in_data, binarized_data):
         
     out_data = np.zeros(in_data.shape)
-    out_data[np.argwhere(binarized_data == 0).squeeze()] = in_data[np.argwhere(binarized_data == 0).squeeze()]
+    out_data[np.argwhere(binarized_data == -1).squeeze()] = in_data[np.argwhere(binarized_data == -1).squeeze()]
     
     out_data = np.abs(scipy.signal.hilbert(out_data))
     
@@ -131,12 +131,12 @@ def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_
     
     if (visualize):
         (fig, axes) = plt.subplots(3, 2)
-        axes[0, 0].plot(t_data01, lpf_data01, color = "blue")
-        axes[0, 0].plot(t_data01, bpf_data01, color = "orange")
-        axes[1, 0].plot(t_data01, hpf_data01, color = "blue")
-        axes[1, 0].plot(t_data01, burst_hf_data, color = "orange")
-        axes[2, 0].plot(t_data01, hpf_data01, color = "blue")
-        axes[2, 0].plot(t_data01, non_burst_hf_data, color = "orange")
+        axes[0, 0].plot(t_data01[0:int(fs_data01/2)], lpf_data01[0:int(fs_data01/2)], color = "blue")
+        axes[0, 0].plot(t_data01[0:int(fs_data01/2)], bpf_data01[0:int(fs_data01/2)], color = "orange")
+        axes[1, 0].plot(t_data01[0:int(fs_data01/2)], hpf_data01[0:int(fs_data01/2)], color = "blue")
+        axes[1, 0].plot(t_data01[0:int(fs_data01/2)], burst_hf_data[0:int(fs_data01/2)], color = "orange")
+        axes[2, 0].plot(t_data01[0:int(fs_data01/2)], hpf_data01[0:int(fs_data01/2)], color = "blue")
+        axes[2, 0].plot(t_data01[0:int(fs_data01/2)], non_burst_hf_data[0:int(fs_data01/2)], color = "orange")
         
         vmax = np.max([np.max(burst_hf_data_psd[start_bin:end_bin]), np.max(non_burst_hf_data_psd[start_bin:end_bin])]) 
         axes[0, 1].plot(bins[start_bin:end_bin], lpf_psd[start_bin:end_bin], color = "black")
@@ -387,6 +387,15 @@ def calculate_spectograms(data, fs, peak_spread, peak_thresh, filter_step_width 
     pac_random_non_burst_specific_strength = np.sum(np.multiply(dmi_non_burst_scores, shuffled_mask_non_burst))
     
     if (visualize):
+        
+        #=======================================================================
+        # lf_psd = lf_psd[:, :10]
+        # hf_burst_psd = hf_burst_psd[:, :10]
+        # hf_non_burst_psd = hf_non_burst_psd[:, :10]
+        # dmi_burst_scores = dmi_burst_scores[:, :10]
+        # dmi_non_burst_scores = dmi_non_burst_scores[:, :10]
+        #=======================================================================
+        
         
         dmi_burst_scores[dmi_burst_scores < pac_thresh] = 0
         dmi_non_burst_scores[dmi_non_burst_scores < pac_thresh] = 0
@@ -650,7 +659,7 @@ def count_bursts(data, fs, peak_spread, peak_thresh, outpath, file):
     binarized_data = methods.detection.bursts.identify_peaks(ff.fir(np.copy(np.asarray(data)), 300, None, 1, fs), fs, 70, None, peak_spread, peak_thresh)
     
     burst_data = peak_data[np.argwhere(binarized_data == 1).squeeze()]
-    non_burst_data = peak_data[np.argwhere(binarized_data == 0).squeeze()]
+    non_burst_data = peak_data[np.argwhere(binarized_data == -1).squeeze()]
     
     burst_spikes_percentage = np.sum(burst_data) / np.sum(peak_data)
     non_burst_spikes_percentage = np.sum(non_burst_data) / np.sum(peak_data)
@@ -674,7 +683,7 @@ def main(mode = "power", overwrite = False, visualize = False):
         if (file == ""):
             continue
         
-        #---------------------------------- if (file != "2959_s2_531_NOT-BETA"):
+        #--- if (file != "2541_s1_815-BETA" and file != "2541_s1_908-NOT-BETA"):
             #---------------------------------------------------------- continue
         
         #=======================================================================
@@ -699,9 +708,9 @@ def main(mode = "power", overwrite = False, visualize = False):
                 loc_data = ff.fir(loc_data, 2, None, 0.1, fs_data01)
             #loc_data = ff.fir(np.asarray(file_data[20]), 12, None, 0.1, fs_data01)
         else:
-            file_hdr = None
+            file_hdr = pickle.load(open(in_path+file+".txt_conv_hdr.pkl", "rb"))
             file_data = None
-            fs_data01 = None
+            fs_data01 = int(file_hdr[20]['fs'])
             loc_data = None
                     
         lf_f_min = int(meta_data["lf f min"][file_idx])
@@ -795,6 +804,8 @@ def main(mode = "power", overwrite = False, visualize = False):
     
 #main(["power", "overall pac", "specific pac"], overwrite = False, visualize = True)
 #main(["overall pac"], overwrite = True, visualize = True)
+#main(["specific pac"], overwrite = True, visualize = True)
+#main(["specific pac"], overwrite = False, visualize = True)
 main(["cnt_burst"], overwrite = True, visualize = True)
 
 

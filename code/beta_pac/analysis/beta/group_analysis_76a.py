@@ -11,6 +11,8 @@ import os
 
 import finn.cleansing.outlier_removal as orem
 
+import matplotlib.pyplot as plt
+
 def main():
     full_data = ods_reader.ods_data("../../../../data/meta.ods")
     (pre_labels, pre_data) = full_data.get_sheet_as_array("beta")
@@ -22,6 +24,7 @@ def main():
     hf_beta_idx = pre_labels.index("beta overall strength 1") 
     pac_burst_strength_idx = pre_labels.index("pac burst strength 2")
     pac_non_burst_strength_idx = pre_labels.index("pac non burst strength 2")
+    spikes = pre_labels.index("spikes_per_second")
     spikes_within = pre_labels.index("spikes_within_per_second")
     spikes_outside = pre_labels.index("spikes_outside_per_second")
     valid_idx = pre_labels.index("valid_data")
@@ -40,6 +43,10 @@ def main():
         for row_idx in range(len(pre_data)):
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
+            
+            if (float(pre_data[row_idx, spikes]) < 20 or float(pre_data[row_idx, spikes]) > 60):
+                continue
+            
             loc_data = np.concatenate((pre_data[row_idx, idx_lists_non_burst[idx_list_idx]], [0]))
             data[-1].append(loc_data)
         loc_labels = list(); loc_labels.append("target_value") 
@@ -58,11 +65,9 @@ def main():
     data = np.asarray(data, dtype = np.float32)
     
     print(data.shape)
-    data = orem.run(data, data[0, :, 0], 2.5, 5, 1)
+    data = orem.run(data, data[0, :, 0], 2, 5, 1)
     print(data.shape)
     
-    formula = "target_value ~ burst + lf + hf + pac + burst:lf + burst:hf + burst:pac + (1|patient_id) + (1|trial)"
-    formula = "target_value ~ lf + hf + pac + (1|patient_id) + (1|trial)"
     formula = "target_value ~ hf + (1|patient_id) + (1|trial)"
     #labels => ['target_value', 'lf', 'hf', 'patient id', 'trial', 'burst']
     factor_type = ["continuous", "continuous", "continuous", "continuous", "categorical", "categorical", "categorical"] 
@@ -71,16 +76,18 @@ def main():
     
     print("beta")
     for data_idx in range(len(data)):
-        tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-        print(np.asarray(tmp))
-        # (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
-        # tmp = np.asarray(tmp); tmp[:5, :] = np.around(np.asarray(tmp[:5, :], dtype = np.float32), 4)
-        #---------------------------------------------------- for x in range(6):
-            #------------------------------------------------ for y in range(7):
-                #---------------------------------- print(tmp[x, y], end = "\t")
-            #--------------------------------------------------------- print("")
+        stats = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
+        print(np.asarray(stats))
+            
+        plt.figure()
+        plt.scatter(data[data_idx][:, 2], data[data_idx][:, 0])
+        plt.plot([np.min(data[data_idx][:, 2]), np.max(data[data_idx][:, 2])],
+                 [stats[3][1] + stats[3][0] * np.min(data[data_idx][:, 2]), stats[3][1] +
+                  stats[3][0] * np.max(data[data_idx][:, 2])])
+        plt.title(formula)
         
-        np.save("../../../../results/beta/stats/76/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        np.save("../../../../results/beta/stats/76/stats_" + targets[data_idx] + ".npy", np.asarray(stats))
+    plt.show(block = True)
     
     
 main()

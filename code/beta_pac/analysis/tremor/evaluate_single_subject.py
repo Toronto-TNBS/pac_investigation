@@ -30,15 +30,14 @@ image_format = ".png"
 
 def preprocess_data(in_data, fs, peak_spread, peak_thresh):
     in_data = np.copy(in_data)
+    binarized_data = methods.detection.bursts.identify_peaks(in_data, fs, 70, None, peak_spread, peak_thresh, "negative", "auto")
     
-    burst_data = transform_burst(in_data, fs, 70, None, peak_spread, peak_thresh)
-    non_burst_data = transform_non_burst(in_data, fs, 70, None, peak_spread, peak_thresh)
+    burst_data = transform_burst(in_data, binarized_data)
+    non_burst_data = transform_non_burst(in_data, binarized_data)
     
     return (burst_data, non_burst_data)
 
-def transform_burst(in_data, fs, filter_f_min, filter_f_max, peak_spread, peak_thresh):
-    binarized_data = methods.detection.bursts.identify_peaks(in_data, fs, filter_f_min, filter_f_max, peak_spread, peak_thresh)
-            
+def transform_burst(in_data, binarized_data):
     out_data = np.zeros(in_data.shape)
     out_data[np.argwhere(binarized_data == 1).squeeze()] = in_data[np.argwhere(binarized_data == 1).squeeze()]
     
@@ -46,11 +45,9 @@ def transform_burst(in_data, fs, filter_f_min, filter_f_max, peak_spread, peak_t
     
     return out_data
 
-def transform_non_burst(in_data, fs, filter_f_min, filter_f_max, peak_spread, peak_thresh):
-    binarized_data = methods.detection.bursts.identify_peaks(in_data, fs, filter_f_min, filter_f_max, peak_spread, peak_thresh)
-        
+def transform_non_burst(in_data, binarized_data):
     out_data = np.zeros(in_data.shape)
-    out_data[np.argwhere(binarized_data == 0).squeeze()] = in_data[np.argwhere(binarized_data == 0).squeeze()]
+    out_data[np.argwhere(binarized_data == -1).squeeze()] = in_data[np.argwhere(binarized_data == -1).squeeze()]
     
     out_data = np.abs(scipy.signal.hilbert(out_data))
     
@@ -538,7 +535,7 @@ def count_bursts(data, fs, peak_spread, peak_thresh, outpath, file):
     binarized_data = methods.detection.bursts.identify_peaks(ff.fir(np.copy(np.asarray(data)), 300, None, 1, fs), fs, 70, None, peak_spread, peak_thresh)
     
     burst_data = peak_data[np.argwhere(binarized_data == 1).squeeze()]
-    non_burst_data = peak_data[np.argwhere(binarized_data == 0).squeeze()]
+    non_burst_data = peak_data[np.argwhere(binarized_data == -1).squeeze()]
     
     burst_spikes_percentage = np.sum(burst_data) / np.sum(peak_data) if (len(peak_data) != 0) else -1
     non_burst_spikes_percentage = np.sum(non_burst_data) / np.sum(peak_data) if (len(peak_data) != 0) else -1
@@ -654,7 +651,7 @@ def main(mode = "power", overwrite = False, visualize = False):
         meta_file.write_file()
     print("Terminated successfully")
     
-#main(["power", "overall pac", "specific pac"], overwrite = False, visualize = True)
+#main(["power", "overall pac", "specific pac"], overwrite = True, visualize = True)
 main(["cnt_burst"], overwrite = True, visualize = True)
 #main(["power"], overwrite = True, visualize = True)
 

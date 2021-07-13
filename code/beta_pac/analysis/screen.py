@@ -17,7 +17,9 @@ import numpy as np
 
 import finn.filters.frequency as ff
         
-import os        
+import os
+
+import methods.detection.bursts
 
 def main(mode = "beta"):
     meta = methods.data_io.ods.ods_data("../../../data/meta.ods")
@@ -31,8 +33,8 @@ def main(mode = "beta"):
         if (file == ""):
             continue
         
-        if (file != "2781_s2_147-BETA"):
-            continue
+        #-------------------------------------- if (file != "2781_s2_147-BETA"):
+            #---------------------------------------------------------- continue
         
         #---------------------- if (meta_data["height-checked"][file_idx] == 1):
             #---------------------------------------------------------- continue
@@ -59,8 +61,12 @@ def main(mode = "beta"):
         
         
         (fig, axes) = plt.subplots(2, 1)
-        axes[0].plot(file_data)
-        axes[0].scatter(peaks, np.asarray(file_data)[peaks], color = "red")
+        axes[0].plot(file_data, zorder = 0)
+        axes[0].scatter(peaks, np.asarray(file_data)[peaks], color = "red", zorder = 1)
+        axes[0].plot([0, len(file_data)], [float(meta_data["peak_thresh"][file_idx]), float(meta_data["peak_thresh"][file_idx])],
+                     color = "black", zorder = 2)
+        axes[0].plot([0, len(file_data)], [-float(meta_data["peak_thresh"][file_idx]), -float(meta_data["peak_thresh"][file_idx])],
+                     color = "black", zorder = 2)
         axes[1].psd(file_data, NFFT = int(file_hdr[20]['fs']), Fs = int(file_hdr[20]['fs']))
         fig.suptitle(file + ": " + str(height))
         
@@ -70,7 +76,28 @@ def main(mode = "beta"):
         geom = mngr.window.geometry()
         x,y,dx,dy = geom.getRect()
         mngr.window.setGeometry(0, 0, 950, 1080)
+        
+        fs = file_hdr[20]['fs']
+        data = ff.fir(file_data, 300, None, 1, fs)
+        data = np.copy(data)
+        data[data > 0] = 0
+        
+        (peaks, _) = scipy.signal.find_peaks(np.abs(data), height = float(meta_data["peak_thresh"][file_idx]))
+        peak_data = np.zeros(data.shape)
+        peak_data[peaks] = 1
+        binarized_data = methods.detection.bursts.identify_peaks(ff.fir(np.copy(np.asarray(data)), 300, None, 1, fs), fs, 70, None, float(meta_data["peak_spread"][file_idx]), float(meta_data["peak_thresh"][file_idx]))
+        
+        burst_data = peak_data[np.argwhere(binarized_data == 1).squeeze()]
+        non_burst_data = peak_data[np.argwhere(binarized_data == -1).squeeze()]
+        
+        burst_spikes_percentage = np.sum(burst_data) / np.sum(peak_data) if (len(peak_data) != 0) else -1
+        non_burst_spikes_percentage = np.sum(non_burst_data) / np.sum(peak_data) if (len(peak_data) != 0) else -1
+        
+        spikes_per_second = np.sum(peak_data) / len(peak_data) * fs if (len(peak_data) != 0) else -1
+        burst_spikes_per_second = np.sum(burst_data)/len(burst_data) * fs if (len(burst_data) != 0) else -1
+        non_burst_spikes_per_second = np.sum(non_burst_data)/len(non_burst_data) * fs if (len(non_burst_data) != 0) else -1
 
+        print((burst_spikes_percentage, non_burst_spikes_percentage, burst_spikes_per_second, non_burst_spikes_per_second, spikes_per_second))
 
         plt.show(block = True)
         
