@@ -136,6 +136,8 @@ def main2():
         
         print("burst", targets[data_idx], np.asarray(tmp))
         
+        #(0,28776970628832893 + (0,43985741193182226− 0) × 1)÷0,28776970628832893
+        
         np.save("../../../../results/beta/stats/17/stats_b_" + targets[data_idx] + ".npy", np.asarray(tmp))
     
     for data_idx in range(len(data)):

@@ -25,8 +25,12 @@ import os
 import scipy.stats
 
 thread_cnt = 11
-image_format = ".png"
-#image_format = ".svg"
+#image_format = ".png"
+image_format = ".svg"
+
+#Pub
+#633-s1-1194
+#642-2267-NOT-TREMOR-with-accel
 
 def preprocess_data(in_data, fs, peak_spread, peak_thresh):
     in_data = np.copy(in_data)
@@ -56,7 +60,7 @@ def transform_non_burst(in_data, binarized_data):
 def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_f, f_min = 2, f_max = 12, peak_spread = 1.5, peak_thresh = 1.1, 
                           visualize = True, outpath = None, file = None, overwrite = True):
     
-    if (fs_data01 is not None):
+    if (data is not None):
         if (len(data) < fs_data01):
             print("Insufficient data")
             return (-1, -1, -1, -1)
@@ -122,12 +126,19 @@ def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_
     
     if (visualize):
         (fig, axes) = plt.subplots(3, 2)
-        axes[0, 0].plot(t_data01, lpf_data01, color = "blue")
-        axes[0, 0].plot(t_data01, bpf_data01, color = "orange")
-        axes[1, 0].plot(t_data01, hpf_data01, color = "blue")
-        axes[1, 0].plot(t_data01, burst_hf_data, color = "orange")
-        axes[2, 0].plot(t_data01, hpf_data01, color = "blue")
-        axes[2, 0].plot(t_data01, non_burst_hf_data, color = "orange")
+        
+        t_start = 0
+        t_end = int(fs_data01/2)
+        
+        t_start = int(fs_data01*0.5)
+        t_end = int(fs_data01*1.0)
+        
+        axes[0, 0].plot(t_data01[t_start:t_end], lpf_data01[t_start:t_end], color = "blue")
+        axes[0, 0].plot(t_data01[t_start:t_end], bpf_data01[t_start:t_end], color = "orange")
+        axes[1, 0].plot(t_data01[t_start:t_end], hpf_data01[t_start:t_end], color = "blue")
+        axes[1, 0].plot(t_data01[t_start:t_end], burst_hf_data[t_start:t_end], color = "orange")
+        axes[2, 0].plot(t_data01[t_start:t_end], hpf_data01[t_start:t_end], color = "blue")
+        axes[2, 0].plot(t_data01[t_start:t_end], non_burst_hf_data[t_start:t_end], color = "orange")
         
         vmax = np.max([np.max(burst_hf_data_psd[start_bin:end_bin]), np.max(non_burst_hf_data_psd[start_bin:end_bin])]) 
         axes[0, 1].plot(bins[start_bin:end_bin], lpf_psd[start_bin:end_bin], color = "black")
@@ -156,6 +167,120 @@ def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_
         
         fig.set_tight_layout(tight = True)
         fig.savefig(outpath + "img/1/" + file + image_format)
+            
+    return (lf_tremor_strength, hf_tremor_strength, burst_tremor_strength, non_burst_tremor_strength)
+
+def plot_hf_lf_components_acc(data, fs_data01, data_acc, fs_acc, lf_min_f, lf_max_f, hf_min_f, hf_max_f, f_min = 2, f_max = 12, peak_spread = 1.5, peak_thresh = 1.1, 
+                          visualize = True, outpath = None, file = None, overwrite = True):
+    
+    if (data is not None):
+        if (len(data) < fs_data01):
+            print("Insufficient data")
+            return (-1, -1, -1, -1)
+        
+        data_acc = ds.run(data_acc, fs_acc, fs_data01)
+        data_acc = data_acc[0:len(data)]
+        data = data[0:len(data_acc)]
+    
+    if (overwrite or os.path.exists(outpath + "data/11/" + file + ".pkl") == False):
+        # filtering
+        lpf_data01 = ff.fir(np.asarray(data_acc), None, 50, 0.1, fs_data01)
+        bpf_data01 = ff.fir(np.asarray(data_acc), lf_min_f, lf_max_f, 0.1, fs_data01)
+        hpf_data01 = ff.fir(np.asarray(data), 300, None, 1, fs_data01)
+        
+        # spike signal smooth-transform
+        (burst_hf_data, non_burst_hf_data) = preprocess_data(hpf_data01, fs_data01, peak_spread, peak_thresh)        
+            
+        (bins, lpf_psd) = scipy.signal.welch(lpf_data01, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
+        (bins, bpf_psd) = scipy.signal.welch(bpf_data01, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
+        (_, raw_hf_data_psd) = scipy.signal.welch(np.abs(scipy.signal.hilbert(hpf_data01)), fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
+        (_, burst_hf_data_psd) = scipy.signal.welch(burst_hf_data, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
+        (_, non_burst_hf_data_psd) = scipy.signal.welch(non_burst_hf_data, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
+        
+        start_bin = np.argmin(np.abs(bins - f_min))
+        end_bin = np.argmin(np.abs(bins - f_max))
+        
+        t_data01 = np.arange(1, len(hpf_data01)+1, 1)/fs_data01
+        
+        pickle.dump([t_data01, lpf_data01, bpf_data01,
+                     hpf_data01, burst_hf_data, non_burst_hf_data, 
+                     bins, lpf_psd, bpf_psd,
+                     raw_hf_data_psd, burst_hf_data_psd, non_burst_hf_data_psd],
+                     open(outpath + "data/11/" + file + ".pkl", "wb"))
+     
+    else:
+        tmp = pickle.load(open(outpath + "data/11/" + file + ".pkl", "rb"))
+        t_data01 = tmp[0]; lpf_data01 = tmp[1]; bpf_data01 = tmp[2];
+        hpf_data01 = tmp[3]; burst_hf_data = tmp[4]; non_burst_hf_data = tmp[5];
+        bins = tmp[6]; lpf_psd = tmp[7]; bpf_psd = tmp[8];
+        raw_hf_data_psd = tmp[9]; burst_hf_data_psd = tmp[10]; non_burst_hf_data_psd = tmp[11];
+     
+        start_bin = np.argmin(np.abs(bins - f_min))
+        end_bin = np.argmin(np.abs(bins - f_max))
+     
+    ref_f_width = 2
+    ref_lf_f_min = lf_min_f-ref_f_width if (lf_min_f-ref_f_width > 1) else 2
+    ref_hf_f_min = hf_min_f-ref_f_width if (hf_min_f-ref_f_width > 1) else 2
+    
+    #------------------------------------------------- print(lf_min_f, lf_max_f)
+    #------------------------------------------------- print(hf_min_f, hf_max_f)
+    
+    lf_tremor_strength = np.average(lpf_psd[lf_min_f:lf_max_f]) / np.average([np.average(lpf_psd[(ref_lf_f_min):lf_min_f]), np.average(lpf_psd[lf_max_f:(lf_max_f+ref_f_width)])])
+    #lf_tremor_strength = np.average(lpf_psd[lf_min_f:lf_max_f]) / np.average(lpf_psd[lf_max_f:(lf_max_f+ref_f_width)])
+    hf_tremor_strength = np.average(raw_hf_data_psd[hf_min_f:hf_max_f]) / np.average([np.average(raw_hf_data_psd[(ref_hf_f_min):hf_min_f]), np.average(raw_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])])
+    #hf_tremor_strength = np.average(raw_hf_data_psd[hf_min_f:hf_max_f]) / np.average(raw_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])
+    burst_tremor_strength = np.average(burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average([np.average(burst_hf_data_psd[(ref_hf_f_min):hf_min_f]), np.average(burst_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])])
+    #burst_tremor_strength = np.average(burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average(raw_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])
+    #burst_tremor_strength = np.average(burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average(burst_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])
+    non_burst_tremor_strength = np.average(non_burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average([np.average(non_burst_hf_data_psd[(ref_hf_f_min):hf_min_f]), np.average(non_burst_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])])
+    #non_burst_tremor_strength = np.average(non_burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average(raw_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])
+    #non_burst_tremor_strength = np.average(non_burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average(non_burst_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])
+    
+    lf_tremor_strength = np.log(lf_tremor_strength)
+    hf_tremor_strength = np.log(hf_tremor_strength)
+    burst_tremor_strength = np.log(burst_tremor_strength)
+    non_burst_tremor_strength = np.log(non_burst_tremor_strength)
+    
+    if (visualize):
+        
+        t_start = int(fs_data01*0.5)
+        t_end = int(fs_data01*1.0)
+        
+        (fig, axes) = plt.subplots(3, 2)        
+        axes[0, 0].plot(t_data01[t_start:t_end], lpf_data01[t_start:t_end], color = "blue")
+        axes[0, 0].plot(t_data01[t_start:t_end], bpf_data01[t_start:t_end], color = "orange")
+        axes[1, 0].plot(t_data01[t_start:t_end], hpf_data01[t_start:t_end], color = "blue")
+        axes[1, 0].plot(t_data01[t_start:t_end], burst_hf_data[t_start:t_end], color = "orange")
+        axes[2, 0].plot(t_data01[t_start:t_end], hpf_data01[t_start:t_end], color = "blue")
+        axes[2, 0].plot(t_data01[t_start:t_end], non_burst_hf_data[t_start:t_end], color = "orange")
+        
+        vmax = np.max([np.max(burst_hf_data_psd[start_bin:end_bin]), np.max(non_burst_hf_data_psd[start_bin:end_bin])]) 
+        axes[0, 1].plot(bins[start_bin:end_bin], lpf_psd[start_bin:end_bin], color = "black")
+        axes[0, 1].plot(bins[start_bin:end_bin], bpf_psd[start_bin:end_bin], color = "blue")
+        axes[1, 1].plot(bins[start_bin:end_bin], raw_hf_data_psd[start_bin:end_bin], color = "black")
+        axes[1, 1].plot(bins[start_bin:end_bin], burst_hf_data_psd[start_bin:end_bin], color = "blue")
+        axes[2, 1].plot(bins[start_bin:end_bin], raw_hf_data_psd[start_bin:end_bin], color = "black")
+        axes[2, 1].plot(bins[start_bin:end_bin], non_burst_hf_data_psd[start_bin:end_bin], color = "blue")
+        
+        axes[0, 0].set_title("default")
+        axes[1, 0].set_title("burst")
+        axes[2, 0].set_title("non burst")
+        axes[0, 1].set_title("default %1.2f" % (lf_tremor_strength,))
+        axes[1, 1].set_title("burst %1.2f of %1.2f" % (burst_tremor_strength, hf_tremor_strength))
+        axes[2, 1].set_title("non burst %1.2f of %1.2f" % (non_burst_tremor_strength, hf_tremor_strength))
+        
+        axes[1, 1].set_yticks([0, vmax])
+        axes[2, 1].set_yticks([0, vmax])
+        
+        axes[0, 1].set_xticks(np.arange(f_min, f_max, 2))
+        axes[1, 1].set_xticks(np.arange(f_min, f_max, 2))
+        axes[2, 1].set_xticks(np.arange(f_min, f_max, 2))
+        axes[0, 1].set_xticklabels(axes[0, 1].get_xticks(), rotation = 45)
+        axes[1, 1].set_xticklabels(axes[1, 1].get_xticks(), rotation = 45)
+        axes[2, 1].set_xticklabels(axes[2, 1].get_xticks(), rotation = 45)
+        
+        fig.set_tight_layout(tight = True)
+        fig.savefig(outpath + "img/11/" + file + image_format)
             
     return (lf_tremor_strength, hf_tremor_strength, burst_tremor_strength, non_burst_tremor_strength)
 
@@ -242,7 +367,7 @@ def calculate_dmi_acc(data, fs_data01, data_acc, fs_data01_acc, peak_spread, pea
         
         pickle.dump([best_fit_default, amp_signal_default, score_default,
                      best_fit_burst, amp_signal_burst, score_burst,
-                     best_fit_non_burst, amp_signal_non_burst, score_non_burst], open(outpath + "data/2/" + file + ".pkl", "wb"))
+                     best_fit_non_burst, amp_signal_non_burst, score_non_burst], open(outpath + "data/4/" + file + ".pkl", "wb"))
         
     else:
         
@@ -298,6 +423,43 @@ def calculate_spectograms_inner(data, window_width, fs,
         loc_burst_dmi_scores.append(loc_dmi_score)
         
         loc_dmi_lf_data = ff.fir(np.copy(data), f_idx - f_window_width/2, f_idx + f_window_width/2, filter_step_width, fs)
+        if ((loc_non_burst_hf_data != 0).all()):
+            (loc_dmi_score, _, _) = pac.run_dmi(loc_dmi_lf_data, loc_non_burst_hf_data, 10, 1)
+        else:
+            loc_dmi_score = 0 #There cannot be any pack if there is no data in this segment
+        loc_non_burst_dmi_scores.append(loc_dmi_score)
+            
+    return (loc_lf_psd[min_f_bin_idx:max_f_bin_idx], loc_burst_hf_psd[min_f_bin_idx:max_f_bin_idx], loc_non_burst_hf_psd[min_f_bin_idx:max_f_bin_idx],
+            loc_burst_dmi_scores, loc_non_burst_dmi_scores)
+    
+def calculate_spectograms_inner_acc(data, window_width, fs,
+                                    data_acc,
+                                f_min, f_max, f_window_width, f_window_step_sz,
+                                start_idx, filter_step_width = 1, peak_spread = 1.5, peak_thresh = 1.1):
+    
+    nfft = int(fs*4)
+    
+    print("Processing idx %i of %i" % (start_idx, len(data) - window_width))
+    loc_hf_data = ff.fir(np.copy(data), 300, None, filter_step_width, fs)
+    (loc_burst_hf_data, loc_non_burst_hf_data) = preprocess_data(loc_hf_data, fs, peak_spread, peak_thresh)
+
+    (bins, loc_lf_psd) = scipy.signal.welch(data_acc, fs, window = "hann", nperseg = nfft, noverlap = int(nfft/2), nfft = nfft, detrend = False, return_onesided = True)
+    (_, loc_burst_hf_psd) = scipy.signal.welch(loc_burst_hf_data, fs, window = "hann", nperseg = nfft, noverlap = int(nfft/2), nfft = nfft, detrend = False, return_onesided = True)
+    (_, loc_non_burst_hf_psd) = scipy.signal.welch(loc_non_burst_hf_data, fs, window = "hann", nperseg = nfft, noverlap = int(nfft/2), nfft = nfft, detrend = False, return_onesided = True)
+    min_f_bin_idx = np.argmin(np.abs(bins - f_min))
+    max_f_bin_idx = np.argmin(np.abs(bins - f_max))
+    
+    loc_burst_dmi_scores = list()
+    loc_non_burst_dmi_scores = list()
+    for f_idx in np.arange(f_min, f_max, f_window_step_sz):
+        loc_dmi_lf_data = ff.fir(np.copy(data_acc), f_idx - f_window_width/2, f_idx + f_window_width/2, filter_step_width, fs)        
+        if ((loc_burst_hf_data != 0).all()):
+            (loc_dmi_score, _, _) = pac.run_dmi(loc_dmi_lf_data, loc_burst_hf_data, 10, 1)
+        else:
+            loc_dmi_score = 0 #There cannot be any pack if there is no data in this segment
+        loc_burst_dmi_scores.append(loc_dmi_score)
+        
+        loc_dmi_lf_data = ff.fir(np.copy(data_acc), f_idx - f_window_width/2, f_idx + f_window_width/2, filter_step_width, fs)
         if ((loc_non_burst_hf_data != 0).all()):
             (loc_dmi_score, _, _) = pac.run_dmi(loc_dmi_lf_data, loc_non_burst_hf_data, 10, 1)
         else:
@@ -424,6 +586,123 @@ def calculate_spectograms(data, fs, peak_spread, peak_thresh, filter_step_width 
             pac_burst_specificity, pac_non_burst_specificity, 
             pac_burst_specific_strength, pac_non_burst_specific_strength)
 
+import finn.basic.downsampling as ds
+
+def calculate_spectograms_acc(data, fs, data_acc, fs_acc, peak_spread, peak_thresh, filter_step_width = 1,
+                          lf_zoom_factor = 1, lf_offset_factor = 0, hf_zoom_factor = 1, hf_offset_factor = 0, pac_thresh = 0.6,
+                          visualize = True, outpath = None, file = None, overwrite = True):
+    
+    if (overwrite or os.path.exists(outpath + "data/5/" + file + ".pkl") == False):
+        window_width = fs*4
+        window_step_sz = int(fs/2)
+        
+        f_min = 2
+        f_max = 10
+        f_window_width = 0
+        f_window_step_sz = 0.25
+        
+        data_acc = ds.run(data_acc, fs_acc, fs)
+        fs_acc = fs
+            
+        tmp = np.asarray(tp.run(thread_cnt, calculate_spectograms_inner_acc,
+                                [(data[start_idx:(start_idx + window_width)], window_width, fs,
+                                  data_acc[start_idx:(start_idx + window_width)],
+                                  f_min, f_max, f_window_width, f_window_step_sz,
+                                  start_idx, filter_step_width, peak_spread, peak_thresh) for start_idx in np.arange(0, len(data) - window_width, window_step_sz)],
+                                 max_time = None, delete_data = True))
+            
+        lf_psd = np.asarray(list(tmp[:, 0]))
+        hf_burst_psd = np.asarray(list(tmp[:, 1]))
+        hf_non_burst_psd = np.asarray(list(tmp[:, 2]))
+        dmi_burst_scores = np.asarray(list(tmp[:, 3]))
+        dmi_non_burst_scores = np.asarray(list(tmp[:, 4]))
+        
+        pickle.dump([lf_psd, hf_burst_psd, hf_non_burst_psd,
+                     dmi_burst_scores, dmi_non_burst_scores], open(outpath + "data/5/" + file + ".pkl", "wb"))
+        
+    else:
+        
+        tmp = pickle.load(open(outpath + "data/5/" + file + ".pkl", "rb"))
+        lf_psd = tmp[0]; hf_burst_psd = tmp[1]; hf_non_burst_psd = tmp[2];
+        dmi_burst_scores = tmp[3]; dmi_non_burst_scores = tmp[4];
+        
+    
+    lf_psd = np.flip(lf_psd, axis = 1)
+    hf_burst_psd = np.flip(hf_burst_psd, axis = 1)
+    hf_non_burst_psd = np.flip(hf_non_burst_psd, axis = 1)
+    dmi_burst_scores = np.flip(dmi_burst_scores, axis = 1)
+    dmi_non_burst_scores = np.flip(dmi_non_burst_scores, axis = 1)
+    
+    lf_psd = np.transpose(lf_psd)
+    hf_burst_psd = np.transpose(hf_burst_psd)
+    hf_non_burst_psd = np.transpose(hf_non_burst_psd)
+    dmi_burst_scores = np.transpose(dmi_burst_scores)
+    dmi_non_burst_scores = np.transpose(dmi_non_burst_scores)
+    
+    a = 1.7
+    lf_psd = (np.power(a, np.log(lf_psd)) - 1)/(a-1)
+    hf_burst_psd = (np.power(a, np.log(hf_burst_psd)) - 1)/(a-1)
+    hf_non_burst_psd = (np.power(a, np.log(hf_non_burst_psd)) - 1)/(a-1)
+    
+    a = 20
+    dmi_burst_scores = (np.power(a, dmi_burst_scores)-1)/(a - 1)
+    dmi_non_burst_scores = (np.power(a, dmi_non_burst_scores)-1)/(a - 1)
+            
+    lf_psd = lf_psd - np.min(lf_psd); lf_psd = lf_psd / np.max(lf_psd)
+    tmp = np.concatenate((hf_burst_psd, hf_non_burst_psd)).reshape(-1)
+    hf_burst_psd = hf_burst_psd - np.min(tmp); hf_non_burst_psd = hf_non_burst_psd - np.min(tmp);
+    tmp = np.concatenate((hf_burst_psd, hf_non_burst_psd)).reshape(-1)
+    hf_burst_psd = hf_burst_psd / np.max(tmp); hf_non_burst_psd = hf_non_burst_psd - np.min(tmp); hf_non_burst_psd = hf_non_burst_psd / np.max(tmp)
+    
+    lf_psd = (lf_psd - 0.5)*2
+    hf_burst_psd = (hf_burst_psd - 0.5)*2
+    hf_non_burst_psd = (hf_non_burst_psd - 0.5)*2
+    
+    lf_psd = lf_psd * lf_zoom_factor
+    lf_psd = lf_psd + lf_offset_factor
+    hf_burst_psd = hf_burst_psd * hf_zoom_factor; hf_non_burst_psd = hf_non_burst_psd * hf_zoom_factor
+    hf_burst_psd = hf_burst_psd + hf_offset_factor; hf_non_burst_psd = hf_non_burst_psd + hf_offset_factor
+            
+    (pac_burst_strength, pac_non_burst_strength,
+     pac_burst_specificity, pac_non_burst_specificity,
+     pac_burst_specific_strength, pac_non_burst_specific_strength) = score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
+                                                                               dmi_burst_scores, dmi_non_burst_scores,
+                                                                               2, 2, -2,
+                                                                               3, pac_thresh)
+        
+    if (visualize):
+        
+        dmi_burst_scores[dmi_burst_scores < float(pac_thresh)] = 0
+        dmi_non_burst_scores[dmi_non_burst_scores < float(pac_thresh)] = 0
+        
+        (fig, axes) = plt.subplots(3, 2)
+        axes[0, 0].imshow(lf_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = -1, vmax = 1)
+        axes[0, 1].imshow(lf_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = -1, vmax = 1)
+        axes[1, 0].imshow(hf_burst_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = -1, vmax = 1)
+        axes[1, 1].imshow(hf_non_burst_psd, cmap='seismic', aspect = 'auto', interpolation = 'lanczos', vmin = -1, vmax = 1)
+        axes[2, 0].imshow(dmi_burst_scores, vmin = 0.0, vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
+        axes[2, 1].imshow(dmi_non_burst_scores, vmin = 0.0, vmax = 1, cmap='seismic', aspect = 'auto', interpolation = 'lanczos')
+
+        axes[0, 0].set_title("burst: low frequency psd")
+        axes[1, 0].set_title("burst: high frequency psd")
+        axes[2, 0].set_title("burst: PAC: %2.2f" % (pac_burst_specificity, ))
+        
+        axes[0, 1].set_title("non burst: low frequency psd")
+        axes[1, 1].set_title("non burst: high frequency psd")
+        axes[2, 1].set_title("non burst: PAC: %2.2f" % (pac_non_burst_specificity, ))
+        
+        for ax in axes.reshape(-1):
+            ax.set_yticks(np.asarray([0, 4, 8, 12, 16, 20, 24, 28])+3)
+            ax.set_yticklabels(([2, 3, 4, 5, 6, 7, 8, 9][::-1]))
+        
+        fig.set_tight_layout(tight = True)
+        
+        fig.savefig(outpath + "/img/5/" + file + image_format)
+        
+    return (pac_burst_strength, pac_non_burst_strength,
+            pac_burst_specificity, pac_non_burst_specificity, 
+            pac_burst_specific_strength, pac_non_burst_specific_strength)
+
 def score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
               dmi_burst_scores, dmi_non_burst_scores, 
               inner_radius, outer_radius, uncertain_value,
@@ -525,14 +804,22 @@ def count_bursts(data, fs, peak_spread, peak_thresh, outpath, file):
     #-------------------------------------- data = ff.fir(data, 205, 195, 1, fs)
     #-------------------------------------- data = ff.fir(data, 405, 395, 1, fs)
     
-    data = ff.fir(data, 300, None, 1, fs)
-    data = np.copy(data)
-    data[data > 0] = 0
+    #------------------------------------- data = ff.fir(data, 300, None, 1, fs)
+    #------------------------------------------------------ data = np.copy(data)
+    #-------------------------------------------------------- data[data > 0] = 0
+#------------------------------------------------------------------------------ 
+    #-- (peaks, _) = scipy.signal.find_peaks(np.abs(data), height = peak_thresh)
+    #------------------------------------------ peak_data = np.zeros(data.shape)
+    #------------------------------------------------------ peak_data[peaks] = 1
+    # binarized_data = methods.detection.bursts.identify_peaks(ff.fir(np.copy(np.asarray(data)), 300, None, 1, fs), fs, 70, None, peak_spread, peak_thresh)
     
-    (peaks, _) = scipy.signal.find_peaks(np.abs(data), height = peak_thresh)
-    peak_data = np.zeros(data.shape)
+    in_data = ff.fir(np.copy(data), 300, None, 1, fs)
+    in_data[in_data > 0] = 0
+    
+    (peaks, _) = scipy.signal.find_peaks(np.abs(in_data), height = peak_thresh)
+    peak_data = np.zeros(in_data.shape)
     peak_data[peaks] = 1
-    binarized_data = methods.detection.bursts.identify_peaks(ff.fir(np.copy(np.asarray(data)), 300, None, 1, fs), fs, 70, None, peak_spread, peak_thresh)
+    binarized_data = methods.detection.bursts.identify_peaks(np.copy(np.asarray(data)), fs, 300, None, peak_spread, peak_thresh)
     
     burst_data = peak_data[np.argwhere(binarized_data == 1).squeeze()]
     non_burst_data = peak_data[np.argwhere(binarized_data == -1).squeeze()]
@@ -559,6 +846,9 @@ def main(mode = "power", overwrite = False, visualize = False):
         if (file == ""):
             continue
         
+        if (file != "633-s1-1194" and file != "642-2267-NOT-TREMOR-with-accel"):
+            continue
+        
         #---------------- if (file != "669-645-TREMOR-MOV-DESYNCH-TREMOR-REST"):
             #---------------------------------------------------------- continue
         
@@ -567,21 +857,18 @@ def main(mode = "power", overwrite = False, visualize = False):
         
         print(file)
         
-        if (overwrite == True):
-            file_hdr = pickle.load(open(in_path+file+".txt_conv_hdr.pkl", "rb"))
-            file_data = pickle.load(open(in_path+file+".txt_conv_data.pkl", "rb"))
-            
-            fs_data01 = int(file_hdr[20]['fs'])
-            loc_data = ff.fir(np.asarray(file_data[20]), 1, None, 0.1, fs_data01)
-            
-            if (21 in file_hdr.keys()):
-                fs_data01_acc = int(file_hdr[21]['fs'])
-                loc_data_acc = ff.fir(np.asarray(file_data[21]), 1, None, 0.1, fs_data01)
+        file_hdr = pickle.load(open(in_path+file+".txt_conv_hdr.pkl", "rb"))
+        file_data = pickle.load(open(in_path+file+".txt_conv_data.pkl", "rb"))
+        
+        fs_data01 = int(file_hdr[20]['fs'])
+        loc_data = ff.fir(np.asarray(file_data[20]), 1, None, 0.1, fs_data01)
+        
+        if (21 in file_hdr.keys()):
+            fs_data01_acc = int(file_hdr[21]['fs'])
+            loc_data_acc = ff.fir(np.asarray(file_data[21]), 1, None, 0.1, fs_data01)
         else:
-            file_hdr = None
-            file_data = None
-            fs_data01 = None
-            loc_data = None
+            fs_data01_acc = None
+            loc_data_acc = None
                     
         lf_f_min = meta_data["lf f min"][file_idx]
         lf_f_max = meta_data["lf f max"][file_idx]
@@ -616,7 +903,19 @@ def main(mode = "power", overwrite = False, visualize = False):
             meta_data["pac non burst specificity 3"][file_idx] = float(pac_values[3])
             meta_data["pac burst specific strength 3"][file_idx] = float(pac_values[4])
             meta_data["pac non burst specific strength 3"][file_idx] = float(pac_values[5])
-                        
+        
+        if ("power acc" in mode):
+            if (loc_data_acc is None):
+                continue
+            
+            tremor_values = plot_hf_lf_components_acc(loc_data, fs_data01, loc_data_acc, fs_data01_acc,
+                                                      lf_f_min, lf_f_max, hf_f_min, hf_f_max, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file,
+                                                overwrite = overwrite, visualize = visualize)
+            meta_data["tremor lfp strength 11"][file_idx] = float(tremor_values[0])
+            meta_data["tremor overall strength 11"][file_idx] = float(tremor_values[1])
+            meta_data["tremor burst strength 11"][file_idx] = float(tremor_values[2])
+            meta_data["tremor non burst strength 11"][file_idx] = float(tremor_values[3])
+                            
         if ("acc pac" in mode):
             if (21 not in file_hdr.keys()):
                 continue
@@ -628,6 +927,29 @@ def main(mode = "power", overwrite = False, visualize = False):
             meta_data["pac overall strength 4"][file_idx] = float(pac_values[0])
             meta_data["pac burst strength 4"][file_idx] = float(pac_values[1])
             meta_data["pac non burst strength 4"][file_idx] = float(pac_values[2])
+            
+        if("specific pac acc" in mode):
+            
+            #-------------------------------- if (file != "633-834-NOT-TREMOR"):
+                #------------------------------------------------------ continue
+#------------------------------------------------------------------------------ 
+            #------------------------------- if (file == "639-2463-NOT-TREMOR"):
+                #------------------------------------------------------ continue
+                
+            if (loc_data_acc is None):
+                continue
+            
+            pac_values = calculate_spectograms_acc(loc_data, fs_data01, loc_data_acc, fs_data01_acc,
+                                                   peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], 
+                                               lf_zoom_factor = meta_data["lf_zoom_factor"][file_idx], lf_offset_factor = meta_data["lf_offset_factor"][file_idx],
+                                               hf_zoom_factor = meta_data["hf_zoom_factor"][file_idx], hf_offset_factor = meta_data["hf_offset_factor"][file_idx], pac_thresh = meta_data["pac_thresh"][file_idx],
+                                               outpath = out_path, file = file, overwrite = overwrite, visualize = visualize)
+            meta_data["pac burst strength 5"][file_idx] = float(pac_values[0])
+            meta_data["pac non burst strength 5"][file_idx] = float(pac_values[1])
+            meta_data["pac burst specificity 5"][file_idx] = float(pac_values[2])
+            meta_data["pac non burst specificity 5"][file_idx] = float(pac_values[3])
+            meta_data["pac burst specific strength 5"][file_idx] = float(pac_values[4])
+            meta_data["pac non burst specific strength 5"][file_idx] = float(pac_values[5])
             
         if ("cnt_burst" in mode):
             score = count_bursts(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]),
@@ -652,7 +974,9 @@ def main(mode = "power", overwrite = False, visualize = False):
     print("Terminated successfully")
     
 #main(["power", "overall pac", "specific pac"], overwrite = True, visualize = True)
-main(["cnt_burst"], overwrite = True, visualize = True)
-#main(["power"], overwrite = True, visualize = True)
+#main(["cnt_burst"], overwrite = True, visualize = True)
+#main(["acc pac"], overwrite = False, visualize = True)
+main(["power", "power acc"], overwrite = False, visualize = True)
+#main(["power", "overall pac", "specific pac", "acc pac"], overwrite = False, visualize = True)
 
 

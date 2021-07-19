@@ -649,14 +649,25 @@ def normalize_data(data, min_val, max_val, radius = 3):
     return data
 
 def count_bursts(data, fs, peak_spread, peak_thresh, outpath, file):
-    data = ff.fir(data, 300, None, 1, fs)
-    data = np.copy(data)
-    data[data > 0] = 0
+    #===========================================================================
+    # data = ff.fir(data, 300, None, 1, fs)
+    # data = np.copy(data)
+    # data[data > 0] = 0
+    # 
+    # (peaks, _) = scipy.signal.find_peaks(np.abs(data), height = peak_thresh)
+    # peak_data = np.zeros(data.shape)
+    # peak_data[peaks] = 1
+    # binarized_data = methods.detection.bursts.identify_peaks(ff.fir(np.copy(np.asarray(data)), 300, None, 1, fs), fs, 70, None, peak_spread, peak_thresh)
+    #===========================================================================
     
-    (peaks, _) = scipy.signal.find_peaks(np.abs(data), height = peak_thresh)
-    peak_data = np.zeros(data.shape)
+    in_data = ff.fir(np.copy(data), 300, None, 1, fs)
+    in_data[in_data > 0] = 0
+    
+    (peaks, _) = scipy.signal.find_peaks(np.abs(in_data), height = peak_thresh)
+    peak_data = np.zeros(in_data.shape)
     peak_data[peaks] = 1
-    binarized_data = methods.detection.bursts.identify_peaks(ff.fir(np.copy(np.asarray(data)), 300, None, 1, fs), fs, 70, None, peak_spread, peak_thresh)
+    binarized_data = methods.detection.bursts.identify_peaks(np.copy(np.asarray(data)), fs, 300, None, peak_spread, peak_thresh)
+        
     
     burst_data = peak_data[np.argwhere(binarized_data == 1).squeeze()]
     non_burst_data = peak_data[np.argwhere(binarized_data == -1).squeeze()]
@@ -673,6 +684,11 @@ def count_bursts(data, fs, peak_spread, peak_thresh, outpath, file):
     
     return (float(burst_spikes_percentage), float(non_burst_spikes_percentage), float(burst_spikes_per_second), float(non_burst_spikes_per_second), float(spikes_per_second))
 
+def ratio_burst_time(data, fs, peak_spread, peak_thresh):
+    binarized_data = methods.detection.bursts.identify_peaks(np.copy(np.asarray(data)), fs, 300, None, peak_spread, peak_thresh)
+    
+    return len(np.argwhere(binarized_data == 1).reshape(-1))/len(np.argwhere(binarized_data == -1).reshape(-1))
+
 def main(mode = "power", overwrite = False, visualize = False):
     meta_file = methods.data_io.ods.ods_data("../../../../data/meta.ods")
     meta_data = meta_file.get_sheet_as_dict("beta")
@@ -683,8 +699,8 @@ def main(mode = "power", overwrite = False, visualize = False):
         if (file == ""):
             continue
         
-        #--- if (file != "2541_s1_815-BETA" and file != "2541_s1_908-NOT-BETA"):
-            #---------------------------------------------------------- continue
+        if (file != "2541_s1_815-BETA" and file != "2541_s1_908-NOT-BETA"):
+            continue
         
         #=======================================================================
         # if (file_idx != 49):
@@ -790,6 +806,12 @@ def main(mode = "power", overwrite = False, visualize = False):
                                        overwrite = overwrite, visualize = visualize)
             meta_data["reverse lf pac score"][file_idx] = float(score)
             
+        
+        if ("ratio burst time" in mode):
+            score = ratio_burst_time(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]),
+                                 peak_thresh = float(meta_data["peak_thresh"][file_idx]))
+            meta_data["ratio_of_burst_time"][file_idx] = float(score)
+            
         if (len(mode) > 1):
             meta_file.modify_sheet_from_dict("beta", meta_data)
             meta_file.write_file()
@@ -806,6 +828,6 @@ def main(mode = "power", overwrite = False, visualize = False):
 #main(["overall pac"], overwrite = True, visualize = True)
 #main(["specific pac"], overwrite = True, visualize = True)
 #main(["specific pac"], overwrite = False, visualize = True)
-main(["cnt_burst"], overwrite = True, visualize = True)
+main(["power"], overwrite = True, visualize = True)
 
 

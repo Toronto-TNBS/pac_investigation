@@ -78,6 +78,9 @@ def main():
                 print(tmp[x, y], end = "\t")
             print("")
         
+        print(np.max(data[0][:, 2]) - np.min(data[0][:, 2]))    # 2.704883801 increase
+                                                                #(0,3143 + (0,2218−0)×2,4158926) ÷ 0,3143
+        
         np.save("../../../../results/beta/stats/25/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
     
     
