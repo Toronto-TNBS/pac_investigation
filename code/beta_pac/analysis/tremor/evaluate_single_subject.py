@@ -544,10 +544,15 @@ def calculate_spectograms(data, fs, peak_spread, peak_thresh, filter_step_width 
             
     (pac_burst_strength, pac_non_burst_strength,
      pac_burst_specificity, pac_non_burst_specificity,
-     pac_burst_specific_strength, pac_non_burst_specific_strength) = score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
-                                                                               dmi_burst_scores, dmi_non_burst_scores,
-                                                                               2, 2, -2,
-                                                                               3, pac_thresh)
+     pac_burst_specific_strength, pac_non_burst_specific_strength, 
+     mask_burst, mask_non_burst) = score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
+                                             dmi_burst_scores, dmi_non_burst_scores,
+                                             2, 2, -2, 3, pac_thresh)
+    
+    shuffled_mask_burst = np.copy(mask_burst); np.random.shuffle(shuffled_mask_burst)
+    shuffled_mask_non_burst = np.copy(mask_non_burst); np.random.shuffle(shuffled_mask_non_burst)
+    pac_random_burst_specific_strength = np.sum(np.multiply(dmi_burst_scores, shuffled_mask_burst))
+    pac_random_non_burst_specific_strength = np.sum(np.multiply(dmi_non_burst_scores, shuffled_mask_non_burst))
      
     #----------------------- pac_burst_strength = 0; pac_non_burst_strength = 0;
     #----------------- pac_burst_specificity = 0; pac_non_burst_specificity = 0;
@@ -584,7 +589,8 @@ def calculate_spectograms(data, fs, peak_spread, peak_thresh, filter_step_width 
         
     return (pac_burst_strength, pac_non_burst_strength,
             pac_burst_specificity, pac_non_burst_specificity, 
-            pac_burst_specific_strength, pac_non_burst_specific_strength)
+            pac_burst_specific_strength, pac_non_burst_specific_strength, 
+            pac_random_burst_specific_strength, pac_random_non_burst_specific_strength)
 
 import finn.basic.downsampling as ds
 
@@ -665,10 +671,15 @@ def calculate_spectograms_acc(data, fs, data_acc, fs_acc, peak_spread, peak_thre
             
     (pac_burst_strength, pac_non_burst_strength,
      pac_burst_specificity, pac_non_burst_specificity,
-     pac_burst_specific_strength, pac_non_burst_specific_strength) = score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
-                                                                               dmi_burst_scores, dmi_non_burst_scores,
-                                                                               2, 2, -2,
-                                                                               3, pac_thresh)
+     pac_burst_specific_strength, pac_non_burst_specific_strength, 
+     mask_burst, mask_non_burst) = score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
+                                             dmi_burst_scores, dmi_non_burst_scores,
+                                             2, 2, -2, 3, pac_thresh)
+    
+    shuffled_mask_burst = np.copy(mask_burst); np.random.shuffle(shuffled_mask_burst)
+    shuffled_mask_non_burst = np.copy(mask_non_burst); np.random.shuffle(shuffled_mask_non_burst)
+    pac_random_burst_specific_strength = np.sum(np.multiply(dmi_burst_scores, shuffled_mask_burst))
+    pac_random_non_burst_specific_strength = np.sum(np.multiply(dmi_non_burst_scores, shuffled_mask_non_burst))
         
     if (visualize):
         
@@ -701,7 +712,8 @@ def calculate_spectograms_acc(data, fs, data_acc, fs_acc, peak_spread, peak_thre
         
     return (pac_burst_strength, pac_non_burst_strength,
             pac_burst_specificity, pac_non_burst_specificity, 
-            pac_burst_specific_strength, pac_non_burst_specific_strength)
+            pac_burst_specific_strength, pac_non_burst_specific_strength, 
+            pac_random_burst_specific_strength, pac_random_non_burst_specific_strength)
 
 def score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
               dmi_burst_scores, dmi_non_burst_scores, 
@@ -728,12 +740,13 @@ def score_pac(lf_psd, hf_burst_psd, hf_non_burst_psd,
     pac_burst_strength = np.sum(dmi_burst_scores)/dmi_burst_scores.shape[1]
     pac_non_burst_strength = np.sum(dmi_non_burst_scores)/dmi_non_burst_scores.shape[1]
     
-    tmp = np.zeros(dmi_burst_scores_sng.shape); tmp[dmi_burst_scores_sng > 0] = 1; pac_burst_specific_strength = np.sum(np.multiply(tmp, dmi_burst_scores))/dmi_burst_scores.shape[1]
-    tmp = np.zeros(dmi_non_burst_scores_sgn.shape); tmp[dmi_non_burst_scores_sgn > 0] = 1; pac_non_burst_specific_strength = np.sum(np.multiply(tmp, dmi_non_burst_scores))/dmi_non_burst_scores.shape[1]
+    mask_burst = np.zeros(dmi_burst_scores_sng.shape); mask_burst[dmi_burst_scores_sng > 0] = 1; pac_burst_specific_strength = np.sum(np.multiply(mask_burst, dmi_burst_scores))
+    mask_non_burst = np.zeros(dmi_non_burst_scores_sgn.shape); mask_non_burst[dmi_non_burst_scores_sgn > 0] = 1; pac_non_burst_specific_strength = np.sum(np.multiply(mask_non_burst, dmi_non_burst_scores))
     
     return (pac_burst_strength, pac_non_burst_strength, 
             pac_burst_specificity, pac_non_burst_specificity, 
-            pac_burst_specific_strength, pac_non_burst_specific_strength)
+            pac_burst_specific_strength, pac_non_burst_specific_strength,
+            mask_burst, mask_non_burst)
 
 def get_full_reference_area(lf_psd, hf_burst_psd, hf_non_burst_psd, radius_small = 2, radius_large = 2, 
                             uncertain_value = 0):
@@ -835,19 +848,61 @@ def count_bursts(data, fs, peak_spread, peak_thresh, outpath, file):
     print((burst_spikes_percentage, non_burst_spikes_percentage, burst_spikes_per_second, non_burst_spikes_per_second, spikes_per_second))
     
     return (float(burst_spikes_percentage), float(non_burst_spikes_percentage), float(burst_spikes_per_second), float(non_burst_spikes_per_second), float(spikes_per_second))
-     
+
+import finn.sfc.td as sfc_td
+
+def get_dac(data, fs, peak_spread, peak_thresh,
+                  lf_f_min, lf_f_max, hf_f_min, hf_f_max,
+                  visualize = True, outpath = None, file = None, overwrite = True):
+    
+    if ((len(data)/fs) < 5):
+        return None
+    
+    f_min = np.min([lf_f_min, hf_f_min])
+    f_max = np.max([lf_f_max, hf_f_max])
+       
+    high_freq_component = ff.fir(np.asarray(data), 300, None, 0.1, fs)
+    low_freq_component  = ff.fir(np.asarray(data), f_min, f_max, 0.1, fs)
+    binarized_data = methods.detection.bursts.identify_peaks(np.copy(data), fs, 300, None, peak_spread, peak_thresh, "negative", "auto")
+    
+    burst_data = transform_burst(np.copy(data), binarized_data)
+    non_burst_data = transform_non_burst(np.copy(data), binarized_data)
+    
+    burst_data = np.abs(scipy.signal.hilbert(burst_data))
+    non_burst_data = np.abs(scipy.signal.hilbert(non_burst_data))
+    
+    high_freq_component = ff.fir(np.asarray(high_freq_component), f_min, f_max, 0.1, fs)
+    burst_data = ff.fir(np.asarray(burst_data), f_min, f_max, 0.1, fs)
+    non_burst_data = ff.fir(np.asarray(non_burst_data), f_min, f_max, 0.1, fs)
+    
+    sfc_value_norm      = sfc_td.run_dac(low_freq_component, np.abs(scipy.signal.hilbert(high_freq_component)),
+                                         f_min, f_max, fs, int(fs), int(fs), return_signed_conn = True, minimal_angle_thresh = 3)
+    
+    sfc_value_burst     = sfc_td.run_dac(low_freq_component, burst_data,
+                                         f_min, f_max, fs, int(fs), int(fs), return_signed_conn = True, minimal_angle_thresh = 3)
+    
+    sfc_value_nburst    = sfc_td.run_dac(low_freq_component, non_burst_data,
+                                         f_min, f_max, fs, int(fs), int(fs), return_signed_conn = True, minimal_angle_thresh = 3)
+    
+    #print(sfc_value_norm[1], sfc_value_burst[1], sfc_value_nburst[1])
+    
+    return (sfc_value_norm[1], sfc_value_burst[1], sfc_value_nburst[1])
+
 def main(mode = "power", overwrite = False, visualize = False):
     meta_file = methods.data_io.ods.ods_data("../../../../data/meta.ods")
     meta_data = meta_file.get_sheet_as_dict("tremor")
     in_path = "../../../../data/tremor/data_for_python/"
     out_path = "../../../../results/tremor/"
+    
+    dac_data = list()
+    
     for (file_idx, file) in enumerate(meta_data["file"]):
         
         if (file == ""):
             continue
         
-        if (file != "633-s1-1194" and file != "642-2267-NOT-TREMOR-with-accel"):
-            continue
+        # if (file != "633-s1-1194" and file != "642-2267-NOT-TREMOR-with-accel"):
+            #---------------------------------------------------------- continue
         
         #---------------- if (file != "669-645-TREMOR-MOV-DESYNCH-TREMOR-REST"):
             #---------------------------------------------------------- continue
@@ -903,6 +958,12 @@ def main(mode = "power", overwrite = False, visualize = False):
             meta_data["pac non burst specificity 3"][file_idx] = float(pac_values[3])
             meta_data["pac burst specific strength 3"][file_idx] = float(pac_values[4])
             meta_data["pac non burst specific strength 3"][file_idx] = float(pac_values[5])
+            
+            ref_value = np.max([pac_values[4], pac_values[5], pac_values[6], pac_values[7]])
+            meta_data["pac burst specific strength norm 3"][file_idx] = float(pac_values[4]/ref_value) if (ref_value != 0) else 0
+            meta_data["pac non burst specific strength norm 3"][file_idx] = float(pac_values[5]/ref_value) if (ref_value != 0) else 0
+            meta_data["pac random burst specific strength norm 3"][file_idx] = float(pac_values[6]/ref_value) if (ref_value != 0) else 0
+            meta_data["pac random non burst specific strength norm 3"][file_idx] = float(pac_values[7]/ref_value) if (ref_value != 0) else 0
         
         if ("power acc" in mode):
             if (loc_data_acc is None):
@@ -951,6 +1012,12 @@ def main(mode = "power", overwrite = False, visualize = False):
             meta_data["pac burst specific strength 5"][file_idx] = float(pac_values[4])
             meta_data["pac non burst specific strength 5"][file_idx] = float(pac_values[5])
             
+            ref_value = np.max([pac_values[4], pac_values[5], pac_values[6], pac_values[7]])
+            meta_data["pac burst specific strength norm 5"][file_idx] = float(pac_values[4]/ref_value) if (ref_value != 0) else 0
+            meta_data["pac non burst specific strength norm 5"][file_idx] = float(pac_values[5]/ref_value) if (ref_value != 0) else 0
+            meta_data["pac random burst specific strength norm 5"][file_idx] = float(pac_values[6]/ref_value) if (ref_value != 0) else 0
+            meta_data["pac random non burst specific strength norm 5"][file_idx] = float(pac_values[7]/ref_value) if (ref_value != 0) else 0
+            
         if ("cnt_burst" in mode):
             score = count_bursts(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]),
                                  peak_thresh = float(meta_data["peak_thresh"][file_idx]), outpath = out_path, file = file)
@@ -960,6 +1027,15 @@ def main(mode = "power", overwrite = False, visualize = False):
             meta_data["spikes_within_per_second"][file_idx] = score[2]
             meta_data["spikes_outside_per_second"][file_idx] = score[3]
             meta_data["spikes_per_second"][file_idx] = score[4] 
+            
+        if ("dac" in mode):
+            tmp = get_dac(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]),
+                       lf_f_min = float(meta_data["lf f min"][file_idx]), lf_f_max = float(meta_data["lf f max"][file_idx]),
+                       hf_f_min = float(meta_data["hf f min"][file_idx]), hf_f_max = float(meta_data["hf f max"][file_idx]),
+                       outpath = out_path, file = file,
+                       overwrite = overwrite, visualize = visualize)
+            if (tmp is not None):
+                dac_data.append([tmp[0], tmp[1], tmp[2], meta_data["lf auto"][file_idx], meta_data["hf auto"][file_idx], file])
         
         if (len(mode) == 4):
             meta_file.modify_sheet_from_dict("tremor", meta_data)
@@ -967,6 +1043,8 @@ def main(mode = "power", overwrite = False, visualize = False):
         
         
         plt.close("all")
+    if ("dac" in mode):
+        np.save("dac.npy", np.asarray(dac_data))
     
     if (len(mode) != 4):
         meta_file.modify_sheet_from_dict("tremor", meta_data)
@@ -976,7 +1054,8 @@ def main(mode = "power", overwrite = False, visualize = False):
 #main(["power", "overall pac", "specific pac"], overwrite = True, visualize = True)
 #main(["cnt_burst"], overwrite = True, visualize = True)
 #main(["acc pac"], overwrite = False, visualize = True)
-main(["power", "power acc"], overwrite = False, visualize = True)
+#main(["specific pac acc"], overwrite = False, visualize = True)
+main(["dac"], overwrite = False, visualize = True)
 #main(["power", "overall pac", "specific pac", "acc pac"], overwrite = False, visualize = True)
 
 

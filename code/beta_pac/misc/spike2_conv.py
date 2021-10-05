@@ -68,6 +68,10 @@ def read_channel_header(file, file_info):
         ch_info["del_size"]         = file[(loc_start +   0):(loc_start +   2)].view(dtype = "<i2")[0]
         ch_info["next_del_block"]   = file[(loc_start +   2):(loc_start +   6)].view(dtype = "<i4")[0]
         ch_info["firstblock"]       = file[(loc_start +   6):(loc_start +  10)].view(dtype = "<i4")[0]
+        
+        if (ch_info["firstblock"] == -1):
+            continue
+        
         ch_info["lastblock"]        = file[(loc_start +  10):(loc_start +  14)].view(dtype = "<i4")[0]
         ch_info["blocks"]           = file[(loc_start +  14):(loc_start +  16)].view(dtype = "<i2")[0]
         ch_info["n_extra"]          = file[(loc_start +  16):(loc_start +  18)].view(dtype = "<i2")[0]
@@ -88,9 +92,6 @@ def read_channel_header(file, file_info):
         ch_info["unit"]             = file[(loc_start + 132):(loc_start + 138)].view(dtype =  "S6")[0]
         ch_info["idx"]              = ch_idx
         ch_info["fs"]               = 1/(ch_info["l_chan_dvd"]*file_info["dtime_base"]*file_info["us_per_time"])
-    
-        if (ch_info["firstblock"] == -1):
-            continue
         
         ch_infos.append(ch_info)
     
@@ -182,9 +183,10 @@ def read_file(file_path):
 
 def demo():
     filePath = "/home/voodoocode/Downloads/2891/2851_s1_635_power_pinch.smr"
-    filePath = "/home/voodoocode/Downloads/2891/tmp4.smr"    
+    filePath = "/home/voodoocode/Downloads/2891/tmp4.smr"
+    file_path = "/home/voodoocode/Downloads/2891/" + "2900_s1_580_power_power_power_pinch_pinch_pinch.smr"
     
-    (file_info, ch_infos, data) = read_file(filePath)
+    (file_info, ch_infos, data) = read_file(file_path)
     
     ch_cnt = len(data)
     (fig, axes) = plt.subplots(ch_cnt, 1)
@@ -193,6 +195,6 @@ def demo():
         print(ch_infos[idx])
         
     plt.show(block = True)
-    
-#demo()
+
+demo()
 #print("Terminated successfully")

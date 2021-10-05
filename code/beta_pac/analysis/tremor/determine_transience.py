@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import scipy.stats
 
 buffer_width = 0
-f_offset = 2
+f_offset = 12
 
 def calculate_variance(data, f_min, f_max):
     loc_data = np.copy(data)
@@ -36,6 +36,7 @@ def get_values(path, subpath, mode):
     data_pac_b = list()
     data_pac_nb = list()
     for (f_idx, f_name) in enumerate(meta_info["file"]):
+        
         if (int(meta_info["valid_data"][f_idx]) == 0):
             continue
                 
@@ -77,12 +78,12 @@ def main(path, subpath, mode):
     
     formula = "target_value ~ power + (1|patient_id) + (1|trial)"
     labels = ["target_value", "power", "patient_id", "trial"]
-    factor_type = ["continuous", "continuous", "categorical", "categorical"] 
-    contrasts = "list(target_value = contr.sum, power = contr.sum, patient_id = contr.sum, trial = contr.sum)"
+    factor_type = ["continuous", "continuous", "categorical", "categorical", "categorical"] 
+    contrasts = "list(target_value = contr.sum, power = contr.sum, patient_id = contr.sum, trial = contr.sum, fake = contr.sum)"
     data_type = "gaussian"
     
     for (tmp_idx, tmp) in enumerate(data):
-        res = np.asarray(glmm.run(np.asarray(tmp, dtype = np.float), labels, factor_type, formula, contrasts, data_type))
+        res = np.asarray(glmm.run(np.asarray(tmp, dtype = float), labels, factor_type, formula, contrasts, data_type))
         print(tmp_idx)
         for x in range(6):
             for y in range(2):

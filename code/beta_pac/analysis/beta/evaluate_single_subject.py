@@ -21,6 +21,11 @@ import methods.data_io.ods
 
 import os
 import scipy.stats
+import pandas
+
+import os.path
+
+import pandas
 
 thread_cnt = 11
 #thread_cnt = 1
@@ -64,7 +69,7 @@ def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_
         hpf_data01 = ff.fir(np.asarray(data), 300, None, 1, fs_data01)
         
         # spike signal smooth-transform
-        (burst_hf_data, non_burst_hf_data) = preprocess_data(hpf_data01, fs_data01, peak_spread, peak_thresh)        
+        (burst_hf_data, non_burst_hf_data) = preprocess_data(hpf_data01, fs_data01, peak_spread, peak_thresh)
             
         (bins, lpf_psd) = scipy.signal.welch(lpf_data01, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
         (bins, bpf_psd) = scipy.signal.welch(bpf_data01, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
@@ -217,6 +222,132 @@ def calculate_pac(data, fs_data01, peak_spread, peak_thresh,
         
     return (score_default, score_burst, score_non_burst)
 
+
+def default_beta_phase_pac(data, fs_data01, peak_spread, peak_thresh,
+                  lf_f_min, lf_f_max, hf_f_min, hf_f_max,
+                  visualize = True, outpath = None, file = None, overwrite = True):
+    if (overwrite or os.path.exists(outpath + "data/2/" + file + ".pkl") == False):
+    
+        high_freq_component = ff.fir(np.asarray(data), 300, None, 0.1, fs_data01)
+        #low_freq_component = ff.fir(np.asarray(data), None, 50, 0.1, fs_data01)
+        #low_freq_component = ff.fir(np.asarray(data), lf_f_min, lf_f_max, 0.1, fs_data01)
+        low_freq_component = ff.fir(np.asarray(data), 12, 32, 0.1, fs_data01)
+        
+        #low_freq_component = ff.fir(np.asarray(data), np.min([lf_f_min, hf_f_min]), np.max([lf_f_max, hf_f_max]), 0.1, fs_data01)
+        #low_freq_component = ff.fir(np.asarray(data), 12, 32, 0.1, fs_data01)
+        
+        (burst_hf_data, non_burst_hf_data) = preprocess_data(high_freq_component, fs_data01, peak_spread, peak_thresh)
+        
+        (score_default, best_fit_default, amp_signal_default) = pac.run_dmi(low_freq_component, high_freq_component, 10, 1)
+        (score_burst, best_fit_burst, amp_signal_burst) = pac.run_dmi(low_freq_component, burst_hf_data, 10, 1)
+        (score_non_burst, best_fit_non_burst, amp_signal_non_burst) = pac.run_dmi(low_freq_component, non_burst_hf_data, 10, 1)
+        
+        pickle.dump([best_fit_default, amp_signal_default, score_default,
+                     best_fit_burst, amp_signal_burst, score_burst,
+                     best_fit_non_burst, amp_signal_non_burst, score_non_burst], open(outpath + "data/test/" + file + ".pkl", "wb"))
+        
+    else:
+        
+        tmp = pickle.load(open(outpath + "data/2/" + file + ".pkl", "rb"))
+        best_fit_default = tmp[0]; amp_signal_default = tmp[1]; score_default = tmp[2];
+        best_fit_burst = tmp[3]; amp_signal_burst = tmp[4]; score_burst = tmp[5];
+        best_fit_non_burst = tmp[6]; amp_signal_non_burst = tmp[7]; score_non_burst = tmp[8];
+    
+    if (visualize):
+        (fig, axes) = plt.subplots(3, 1)
+        axes[0].set_title("default: original data, score: %.2f" % (score_default,))
+        axes[0].plot(best_fit_default)
+        axes[0].plot(amp_signal_default)
+        
+        axes[1].set_title("burst: smoothed data, score: %.2f" % (score_burst,))
+        axes[1].plot(best_fit_burst)
+        axes[1].plot(amp_signal_burst)
+        
+        axes[2].set_title("non burst: smoothed data, score: %.2f" % (score_non_burst,))
+        axes[2].plot(best_fit_non_burst)
+        axes[2].plot(amp_signal_non_burst)
+        
+        fig.set_tight_layout(tight = True)
+        fig.savefig(outpath + "img/2/" + file + image_format)
+        
+    return (score_default, score_burst, score_non_burst)
+
+import finn.sfc.td as sfc_td
+
+def get_dac(data, fs, peak_spread, peak_thresh,
+                  lf_f_min, lf_f_max, hf_f_min, hf_f_max,
+                  visualize = True, outpath = None, file = None, overwrite = True):
+    
+    if ((len(data)/fs) < 5):
+        return None
+    
+    f_min = np.min([lf_f_min, hf_f_min])
+    f_max = np.max([lf_f_max, hf_f_max])
+       
+    high_freq_component = ff.fir(np.asarray(data), 300, None, 0.1, fs)
+    low_freq_component  = ff.fir(np.asarray(data), f_min, f_max, 0.1, fs)
+    binarized_data = methods.detection.bursts.identify_peaks(np.copy(data), fs, 300, None, peak_spread, peak_thresh, "negative", "auto")
+    
+    burst_data = transform_burst(np.copy(data), binarized_data)
+    non_burst_data = transform_non_burst(np.copy(data), binarized_data)
+    
+    burst_data = np.abs(scipy.signal.hilbert(burst_data))
+    non_burst_data = np.abs(scipy.signal.hilbert(non_burst_data))
+    
+    high_freq_component = ff.fir(np.asarray(high_freq_component), f_min, f_max, 0.1, fs)
+    burst_data = ff.fir(np.asarray(burst_data), f_min, f_max, 0.1, fs)
+    non_burst_data = ff.fir(np.asarray(non_burst_data), f_min, f_max, 0.1, fs)
+    
+    sfc_value_norm      = sfc_td.run_dac(low_freq_component, np.abs(scipy.signal.hilbert(high_freq_component)),
+                                         f_min, f_max, fs, int(fs), int(fs), return_signed_conn = True, minimal_angle_thresh = 3)
+    
+    sfc_value_burst     = sfc_td.run_dac(low_freq_component, burst_data,
+                                         f_min, f_max, fs, int(fs), int(fs), return_signed_conn = True, minimal_angle_thresh = 3)
+    
+    sfc_value_nburst    = sfc_td.run_dac(low_freq_component, non_burst_data,
+                                         f_min, f_max, fs, int(fs), int(fs), return_signed_conn = True, minimal_angle_thresh = 3)
+    
+    print(sfc_value_norm[1], sfc_value_burst[1], sfc_value_nburst[1])
+    
+    return (sfc_value_norm[1], sfc_value_burst[1], sfc_value_nburst[1])
+
+def test(data, fs, peak_spread, peak_thresh,
+                  lf_f_min, lf_f_max, hf_f_min, hf_f_max,
+                  visualize = True, outpath = None, file = None, overwrite = True):
+
+    lf_data = ff.fir(np.copy(data), lf_f_min, lf_f_max, 0.1, fs, 10e-5, 10e-7, int(fs), "zero", "fast")
+    
+    proto_burst_data = np.zeros(lf_data.shape)
+    burst_data = np.zeros(lf_data.shape)
+    burst_peak_data = list()
+    lf_power_data = np.abs(scipy.signal.hilbert(lf_data))
+    thresh = np.percentile(lf_power_data, 75)
+    proto_burst_data[np.argwhere(lf_power_data > thresh)] = 1
+    start = -1
+    for idx in range(len(proto_burst_data)):
+        if (proto_burst_data[idx] == 1 and start == -1):
+            start = idx
+        if (proto_burst_data[idx] == 0 and start != -1):
+            if ((idx - start) > ((fs/(lf_f_min + lf_f_max)))):#removed /2*2
+                burst_data[start:(idx - 1)] = 1
+                burst_peak_data.append(int((idx - 1 + start)/2))
+            start = -1
+    between_burst_data = list()
+    for (burst_peak_idx, burst_peak) in enumerate(burst_peak_data[:-1]):
+        between_burst_data.append(int((burst_peak + burst_peak_data[burst_peak_idx + 1])/2))
+    burst_mrk = [val for pair in zip(burst_peak_data, between_burst_data) for val in pair]
+            
+
+    win_sz = 1000
+    pad_lf_data = np.pad(lf_data, win_sz, "constant", constant_values = 0)
+    smooth_data = pandas.Series(pad_lf_data).rolling(win_sz, center = True).mean()[win_sz:-win_sz]
+    
+    plt.specgram(smooth_data, NFFT = int(fs), Fs = int(fs))
+    plt.axis(ymin=lf_f_min, ymax=hf_f_max)
+    plt.show(block = True)
+    
+    print("test")
+ 
 def calculate_pac_exp_inner(loc_burst_hf_data, high_freq_component, fs_data01, f_offset, f_step_sz):
     #low_freq_component = ff.fir(np.copy(loc_burst_hf_data), 0.02 + f_offset, 0.2 + f_offset, 0.02, fs_data01)
     low_freq_component = ff.fir(np.copy(loc_burst_hf_data), 0.02 + f_offset, f_step_sz + f_offset, 0.1, fs_data01)
@@ -689,18 +820,295 @@ def ratio_burst_time(data, fs, peak_spread, peak_thresh):
     
     return len(np.argwhere(binarized_data == 1).reshape(-1))/len(np.argwhere(binarized_data == -1).reshape(-1))
 
+def get_hf_power(data, fs, peak_spread = 1.5, peak_thresh = 1.1):
+    loc_data = np.copy(data)
+    
+    hpf_data01 = ff.fir(np.asarray(loc_data), 300, None, 1, fs)
+    binarized_data = methods.detection.bursts.identify_peaks(hpf_data01, fs, 70, None, peak_spread, peak_thresh, "negative", "auto")
+    (peaks, _) = scipy.signal.find_peaks(np.abs(hpf_data01), height = peak_thresh)
+    
+    out_data_zero = np.zeros(loc_data.shape)
+    out_data_zero[np.argwhere(binarized_data == 1).squeeze()] = loc_data[np.argwhere(binarized_data == 1).squeeze()]
+    out_data_zero = np.abs(scipy.signal.hilbert(out_data_zero))
+    
+    out_data_trunc = loc_data[np.argwhere(binarized_data == 1).squeeze()]
+    out_data_trunc = np.abs(scipy.signal.hilbert(out_data_trunc))
+    
+    nfft = int(fs / 10)
+    (bins, out_data_zero_fd) = scipy.signal.welch(out_data_zero, fs = fs, window = "hanning",
+                                                  nperseg = nfft, noverlap = nfft // 2, nfft = nfft,
+                                                  detrend = "linear", return_onesided = True, scaling = "density", axis = -1, average = "mean")
+    out_data_trunc_fd = scipy.signal.welch(out_data_trunc, fs = fs, window = "hanning",
+                                           nperseg = nfft, noverlap = nfft // 2, nfft = nfft,
+                                           detrend = "linear", return_onesided = True, scaling = "density", axis = -1, average = "mean")[1]
+    
+    plt.figure()
+    plt.plot(bins[np.argmin(np.abs(bins - 50)):np.argmin(np.abs(bins - 300))],
+             out_data_zero_fd[np.argmin(np.abs(bins - 50)):np.argmin(np.abs(bins - 300))], color = "blue")
+    plt.plot(bins[np.argmin(np.abs(bins - 50)):np.argmin(np.abs(bins - 300))],
+             out_data_trunc_fd[np.argmin(np.abs(bins - 50)):np.argmin(np.abs(bins - 300))], color = "green")
+    
+    loc_data = np.zeros(loc_data.shape)
+    loc_data[peaks] += 1
+    
+    out_data_zero = np.zeros(loc_data.shape)
+    out_data_zero[np.argwhere(binarized_data == 1).squeeze()] = loc_data[np.argwhere(binarized_data == 1).squeeze()]
+    out_data_zero = np.abs(scipy.signal.hilbert(out_data_zero))
+    
+    out_data_trunc = loc_data[np.argwhere(binarized_data == 1).squeeze()]
+    out_data_trunc = np.abs(scipy.signal.hilbert(out_data_trunc))
+    
+    nfft = int(fs / 10)
+    (bins, out_data_zero_fd) = scipy.signal.welch(out_data_zero, fs = fs, window = "hanning",
+                                                  nperseg = nfft, noverlap = nfft // 2, nfft = nfft,
+                                                  detrend = "linear", return_onesided = True, scaling = "density", axis = -1, average = "mean")
+    out_data_trunc_fd = scipy.signal.welch(out_data_trunc, fs = fs, window = "hanning",
+                                           nperseg = nfft, noverlap = nfft // 2, nfft = nfft,
+                                           detrend = "linear", return_onesided = True, scaling = "density", axis = -1, average = "mean")[1]
+    
+    plt.figure()
+    plt.plot(bins[np.argmin(np.abs(bins - 50)):np.argmin(np.abs(bins - 300))],
+             out_data_zero_fd[np.argmin(np.abs(bins - 50)):np.argmin(np.abs(bins - 300))], color = "blue")
+    plt.plot(bins[np.argmin(np.abs(bins - 50)):np.argmin(np.abs(bins - 300))],
+             out_data_trunc_fd[np.argmin(np.abs(bins - 50)):np.argmin(np.abs(bins - 300))], color = "green")
+    
+    plt.show(block = True)
+
+def __sine(x, phase, amp):
+    """
+    Internal method. Used in run_dmi to estimate the direct modulation index. The amount of PAC is quantified via a sine fit. This sine is defined by the following paramters:
+    
+    :param x: Samples
+    :param phase: Phase shift of the sine.
+    :param amp: Amplitude of the sine.
+    
+    :return: Returns the fitted sine at the locations indicated by x.
+    """
+    freq = 1
+    fs = 1
+    return amp * (np.sin(2 * np.pi * freq * (x - phase) / fs))
+
+import scipy.stats
+
+def get_phase_spike(data, fs, peak_spread = 1.5, peak_thresh = 1.1, phase_window_half_sz = 5, max_model_fit_iterations = 300):
+    loc_data = np.copy(data)
+    
+    spike_data01 = ff.fir(np.asarray(loc_data), 300, None, 1, fs)
+    (peaks, _) = scipy.signal.find_peaks(np.abs(spike_data01), height = peak_thresh)
+    spikes = np.zeros(loc_data.shape)
+    spikes[peaks] = 1
+    
+    beta_data = ff.fir(np.copy(loc_data), 12, 32, 1, fs, 10e-5, 10e-7, fs, "zero", "fast")
+    beta_amp = np.abs(beta_data)
+    
+    (score, best_fit, amplitude_signal) = tf.dmi(np.copy(beta_data), np.copy(spikes), phase_window_half_size = 5, max_model_fit_iterations = 300)
+    amplitude_signal -= min(amplitude_signal)
+    
+    mrk = np.zeros(beta_data.shape)
+    phase_signal = np.angle(scipy.signal.hilbert(beta_data), deg = True)
+    mrk[phase_signal > -135] = 1
+    mrk[phase_signal >= -45] = 0
+    mrk = np.concatenate((mrk, [0]))
+    
+    plt.figure()
+    plt.plot(mrk * np.max(phase_signal))
+    plt.plot(phase_signal)
+    
+    corr_spikes = list()
+    corr_amp = list()
+    area_sz = 0
+    for idx in range(len(mrk)):
+        if (mrk[idx] == 1):
+            area_sz += 1
+        if (mrk[idx] == 0):
+            if (area_sz > 10):
+                corr_spikes.append(np.sum(spikes[(idx - area_sz):(idx - 1)]))
+                corr_amp.append(np.sum(beta_amp[(idx - area_sz):(idx - 1)]))
+
+            area_sz = 0
+    corr_spikes = np.asarray(corr_spikes)
+    corr_amp = np.asarray(corr_amp)
+    
+    corr_spikes_0 = corr_spikes[corr_spikes == 0]; corr_spikes_1 = corr_spikes[corr_spikes == 1]; corr_spikes_2 = corr_spikes[corr_spikes == 2]
+    corr_amp_0 = corr_amp[corr_spikes == 0]; corr_amp_1 = corr_amp[corr_spikes == 1]; corr_amp_2 = corr_amp[corr_spikes == 2]
+    
+    print(scipy.stats.ttest_ind(corr_amp_0, corr_amp_1))
+    print(scipy.stats.ttest_ind(corr_amp_1, corr_amp_2))
+    print(scipy.stats.ttest_ind(corr_amp_0, corr_amp_2))
+    
+    plt.figure()
+    plt.boxplot([corr_amp_0, corr_amp_1, corr_amp_2], labels = ["0 spikes", "1 spike", "2 spikes"])
+#    plt.scatter(corr_spikes, corr_amp)
+    plt.show(block = True)
+            
+    plt.figure()
+    smooth_sz = 5
+    smooth_beta_hist = pandas.Series(np.pad(amplitude_signal, smooth_sz, "constant", constant_values = [0])).rolling(window = smooth_sz, center = True).mean()[smooth_sz:-smooth_sz]
+    plt.bar(np.arange(-180 + phase_window_half_sz, 180 - phase_window_half_sz, phase_window_half_sz * 2), smooth_beta_hist, width = phase_window_half_sz * 2 - 1)
+    best_fit *= (np.max(smooth_beta_hist) - np.min(smooth_beta_hist)) / 2
+    best_fit += (np.max(smooth_beta_hist) + np.min(smooth_beta_hist)) / 2
+    plt.plot(np.arange(-180 + phase_window_half_sz, 180 - phase_window_half_sz, phase_window_half_sz * 2), best_fit, color = "red")
+    plt.title(str(score))
+    
+    plt.show(block = True)
+
+def get_phase_data(data, fs, peak_spread = 1.5, peak_thresh = 1.1, phase_window_half_sz = 5, max_model_fit_iterations = 300, file = None,
+           visualize_phase_effects = True, visualize_binned_effects = False):
+    loc_data = np.copy(data)
+    
+    spike_data01 = ff.fir(np.asarray(loc_data), 300, None, 1, fs)
+    hfo_data = ff.fir(np.asarray(loc_data), 150, 300, 1, fs)
+    hfo_data = np.abs(scipy.signal.hilbert(hfo_data))
+    (peaks, _) = scipy.signal.find_peaks(np.abs(spike_data01), height = peak_thresh)
+    spikes = np.zeros(loc_data.shape)
+    spikes[peaks] = 1
+    
+    beta_data = ff.fir(np.copy(loc_data), 12, 32, 1, fs, 10e-5, 10e-7, fs, "zero", "fast")
+    beta_amp = np.abs(beta_data)
+    
+    (_, _, spike_amplitude_signal) = tf.dmi(np.copy(beta_data), np.copy(spikes), phase_window_half_size = 5, max_model_fit_iterations = 300)
+    (score, best_fit, hfo_amplitude_signal) = tf.dmi(np.copy(beta_data), np.copy(hfo_data), phase_window_half_size = 5, max_model_fit_iterations = 300)
+    spike_amplitude_signal -= min(spike_amplitude_signal)
+    hfo_amplitude_signal -= min(hfo_amplitude_signal)
+    
+    print(scipy.stats.spearmanr(best_fit, spike_amplitude_signal))
+    print(scipy.stats.spearmanr(best_fit, hfo_amplitude_signal))
+    
+    if (visualize_phase_effects):            
+        plt.figure()
+        smooth_sz = 5
+        spike_smooth_beta_hist = pandas.Series(np.pad(spike_amplitude_signal, smooth_sz, "constant", constant_values = [0])).rolling(window = smooth_sz, center = True).mean()[smooth_sz:-smooth_sz]
+        hfo_smooth_beta_hist = pandas.Series(np.pad(hfo_amplitude_signal, smooth_sz, "constant", constant_values = [0])).rolling(window = smooth_sz, center = True).mean()[smooth_sz:-smooth_sz]
+        spike_smooth_beta_hist /= np.max(spike_smooth_beta_hist)
+        hfo_smooth_beta_hist /= np.max(hfo_smooth_beta_hist)
+        best_fit /= np.max(best_fit)
+        
+        plt.bar(np.arange(-180 + phase_window_half_sz, 180 - phase_window_half_sz, phase_window_half_sz * 2), hfo_smooth_beta_hist, width = phase_window_half_sz * 2 - 1)
+        plt.bar(np.arange(-180 + phase_window_half_sz, 180 - phase_window_half_sz, phase_window_half_sz * 2), spike_smooth_beta_hist, width = (phase_window_half_sz * 2 - 1) // 2)
+        best_fit *= (np.max(spike_smooth_beta_hist) - np.min(spike_smooth_beta_hist)) / 2
+        best_fit += (np.max(spike_smooth_beta_hist) + np.min(spike_smooth_beta_hist)) / 2
+        plt.plot(np.arange(-180 + phase_window_half_sz, 180 - phase_window_half_sz, phase_window_half_sz * 2), best_fit, color = "red")
+        plt.title(str(score))
+    
+        plt.show(block = True)
+    
+    mrk = np.zeros(beta_data.shape)
+    phase_signal = np.angle(scipy.signal.hilbert(beta_data), deg = True)
+    mrk[phase_signal > -135] = 1
+    mrk[phase_signal >= -45] = 0
+    mrk = np.concatenate((mrk, [0]))
+    binarized_data = methods.detection.bursts.identify_peaks(data, fs, 70, None, peak_spread, peak_thresh, "negative", "auto")
+    
+    corr_spikes = list()
+    corr_beta_amp = list()
+    corr_hfo_amp = list()
+    burst_type = list()
+    spike_area_sz = 0
+    for idx in range(len(mrk)):
+        if (mrk[idx] == 1):
+            spike_area_sz += 1
+        if (mrk[idx] == 0):
+            if (spike_area_sz > 10):
+                corr_spikes.append(np.sum(spikes[(idx - spike_area_sz):(idx - 1)]))
+                corr_beta_amp.append(np.sum(beta_amp[(idx - spike_area_sz):(idx - 1)]))
+                corr_hfo_amp.append(np.sum(hfo_data[(idx - spike_area_sz):(idx - 1)]))
+                burst_type.append(1 if (np.average(binarized_data[(idx - spike_area_sz):(idx - 1)]) > 0.5) else 0)
+
+            spike_area_sz = 0
+    corr_spikes = np.asarray(corr_spikes)
+    corr_beta_amp = np.asarray(corr_beta_amp)
+    corr_hfo_amp = np.asarray(corr_hfo_amp)
+    burst_type = np.asarray(burst_type)
+    
+    corr_beta_amp_0 = corr_beta_amp[corr_spikes == 0]; corr_beta_amp_1 = corr_beta_amp[corr_spikes == 1]; corr_beta_amp_2 = corr_beta_amp[corr_spikes == 2]
+    corr_hfo_amp_0 = corr_hfo_amp[corr_spikes == 0]; corr_hfo_amp_1 = corr_hfo_amp[corr_spikes == 1]; corr_hfo_amp_2 = corr_hfo_amp[corr_spikes == 2]
+    burst_type_0 = burst_type[corr_spikes == 0]; burst_type_1 = burst_type[corr_spikes == 1]; burst_type_2 = burst_type[corr_spikes == 2]
+
+    if (visualize_binned_effects):
+        plt.figure()
+        plt.boxplot([corr_beta_amp_0, corr_beta_amp_1, corr_beta_amp_2], labels = ["0 spikes", "1 spike", "2 spikes"])
+        plt.figure()
+        plt.boxplot([corr_hfo_amp_0, corr_hfo_amp_1, corr_hfo_amp_2], labels = ["0 spikes", "1 spike", "2 spikes"])
+    #    plt.scatter(corr_spikes, corr_amp)
+        plt.show(block = True)
+    
+    os.makedirs("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/", exist_ok = True)
+    
+    np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/corr_beta_amp_0.npy", corr_beta_amp_0)
+    np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/corr_beta_amp_1.npy", corr_beta_amp_1)
+    np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/corr_beta_amp_2.npy", corr_beta_amp_2)
+    
+    np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/corr_hfo_amp_0.npy", corr_hfo_amp_0)
+    np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/corr_hfo_amp_1.npy", corr_hfo_amp_1)
+    np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/corr_hfo_amp_2.npy", corr_hfo_amp_2)
+    
+    np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/burst_type_0.npy", burst_type_0)
+    np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/burst_type_1.npy", burst_type_1)
+    np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/burst_type_2.npy", burst_type_2)
+
+import analysis.beta.to_finn as tf
+import lmfit
+
+def absolute_pac(data, fs, peak_spread, peak_thresh,
+                  lf_f_min, lf_f_max, hf_f_min, hf_f_max,
+                  visualize = True, outpath = None, file = None, overwrite = True):
+    """
+    Determines the pac between the beta signal and the burst signal when the latter is transformed to (0, 1)
+    """
+    
+    high_freq_component = ff.fir(np.asarray(data), 300, None, 0.1, fs)
+    low_freq_component = ff.fir(np.asarray(data), hf_f_min, hf_f_max, 0.1, fs)
+        
+    binarized_data = methods.detection.bursts.identify_peaks(high_freq_component, fs, 70, None, peak_spread, peak_thresh, "negative", "auto")
+    binarized_data[binarized_data == 0] = np.nan
+    binarized_data[binarized_data == -1] = 0
+    
+    
+    (score_burst, best_fit_burst, amp_signal_burst) = pac.run_dmi(low_freq_component, binarized_data, 10, 1)
+    
+    if (visualize):
+        plt.figure()
+        plt.plot(high_freq_component, color = "black")
+        plt.plot(binarized_data * np.max(high_freq_component), color = "blue")
+        plt.figure()
+        plt.plot(np.arange(-180, 181, 1), amp_signal_burst)
+        plt.plot(np.arange(-180, 181, 1), best_fit_burst)
+        
+        plt.show(block = True)
+    
+    pickle.dump([score_burst, best_fit_burst, amp_signal_burst], open(outpath + "data/absolute_pac/" + file + ".pkl", "wb"))
+
 def main(mode = "power", overwrite = False, visualize = False):
     meta_file = methods.data_io.ods.ods_data("../../../../data/meta.ods")
     meta_data = meta_file.get_sheet_as_dict("beta")
     in_path = "../../../../data/beta/data_for_python/"
     out_path = "../../../../results/beta/"
+    
+    dac_data = list()
+    
     for (file_idx, file) in enumerate(meta_data["file"]):
         
         if (file == ""):
             continue
         
-        if (file != "2541_s1_815-BETA" and file != "2541_s1_908-NOT-BETA"):
-            continue
+        #=======================================================================
+        # if (file != "2541_s1_815-BETA" and file != "2541_s1_908-NOT-BETA"):
+        #     continue
+        #=======================================================================
+        
+        #=======================================================================
+        # if (file != "2622_s1_614b-BETA" and file != "2622_s1_763-BETA" and file != "2622_s1_1017b-BETA-two-beta-neurons-synchronous-longer-file"
+        #     and file != "2622_s2_598-BETA"):
+        #     continue
+        #=======================================================================
+        
+        #=======================================================================
+        # if (file != "2622_s1_614b-BETA" and file != "2622_s1_763-BETA" and file != "2622_s1_1017b-BETA-two-beta-neurons-synchronous-longer-file"
+        #     and file != "2622_s2_598-BETA" and file != "2779_s1_685-BETA-faster" and file != "2884_s1_596_BETA" and file != "2903-s2-650"
+        #     and file != "2903-s2-775-long" and file != "3304_tbd_s1_138" and file != "3304_tbd_s1_497" and file != "3304_tbd_s2_440"
+        #     and file != "2559_s1_602-BETA"):
+        #     continue
+        #=======================================================================
         
         #=======================================================================
         # if (file_idx != 49):
@@ -770,15 +1178,6 @@ def main(mode = "power", overwrite = False, visualize = False):
             meta_data["pac non burst specific strength norm 3"][file_idx] = float(pac_values[5]/ref_value) if (ref_value != 0) else 0
             meta_data["pac random burst specific strength norm 3"][file_idx] = float(pac_values[6]/ref_value) if (ref_value != 0) else 0
             meta_data["pac random non burst specific strength norm 3"][file_idx] = float(pac_values[7]/ref_value) if (ref_value != 0) else 0
-            
-        if("dac" in mode): # Does not work, simply not enough data
-            raise AssertionError("Not enough data")
-            #===================================================================
-            # pac_values = calculate_sfc(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]),
-            #                            f_min_lf = float(meta_data["lf f min"][file_idx]), f_max_lf = float(meta_data["lf f max"][file_idx]), visualize = visualize, outpath = out_path,
-            #                            file = file, overwrite = overwrite)
-            # meta_data["dac 4"][file_idx] = float(pac_values[0])
-            #===================================================================
         
         if ("cnt_burst" in mode):
             score = count_bursts(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]),
@@ -812,12 +1211,57 @@ def main(mode = "power", overwrite = False, visualize = False):
                                  peak_thresh = float(meta_data["peak_thresh"][file_idx]))
             meta_data["ratio_of_burst_time"][file_idx] = float(score)
             
+        
+        if ("hf power" in mode):
+            get_hf_power(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]),
+                         peak_thresh = float(meta_data["peak_thresh"][file_idx]))
+            
+        if ("phase spike" in mode):
+            get_phase_spike(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), 
+                            peak_thresh = float(meta_data["peak_thresh"][file_idx]))
+        
+        if ("phase data" in mode):
+            get_phase_data(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]),
+                           peak_thresh = float(meta_data["peak_thresh"][file_idx]), file = file)
+            
+        if ("absolute_pac" in mode):
+            absolute_pac(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]),
+                         lf_f_min = float(meta_data["lf f min"][file_idx]), lf_f_max = float(meta_data["lf f max"][file_idx]),
+                         hf_f_min = float(meta_data["hf f min"][file_idx]), hf_f_max = float(meta_data["hf f max"][file_idx]),
+                         outpath = out_path, file = file,
+                         overwrite = overwrite, visualize = visualize)
+            
+        if ("default_beta_phase_pac" in mode):
+            default_beta_phase_pac(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]),
+                                   lf_f_min = float(meta_data["lf f min"][file_idx]), lf_f_max = float(meta_data["lf f max"][file_idx]),
+                                   hf_f_min = float(meta_data["hf f min"][file_idx]), hf_f_max = float(meta_data["hf f max"][file_idx]),
+                                   outpath = out_path, file = file,
+                                   overwrite = overwrite, visualize = visualize)
+            
+        if ("dac" in mode):
+            tmp = get_dac(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]),
+                       lf_f_min = float(meta_data["lf f min"][file_idx]), lf_f_max = float(meta_data["lf f max"][file_idx]),
+                       hf_f_min = float(meta_data["hf f min"][file_idx]), hf_f_max = float(meta_data["hf f max"][file_idx]),
+                       outpath = out_path, file = file,
+                       overwrite = overwrite, visualize = visualize)
+            if (tmp is not None):
+                dac_data.append([tmp[0], tmp[1], tmp[2], meta_data["lf auto"][file_idx], meta_data["hf auto"][file_idx], file])
+        
+        if ("test" in mode):
+            test(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]),
+                 lf_f_min = float(meta_data["lf f min"][file_idx]), lf_f_max = float(meta_data["lf f max"][file_idx]),
+                 hf_f_min = float(meta_data["hf f min"][file_idx]), hf_f_max = float(meta_data["hf f max"][file_idx]),
+                 outpath = out_path, file = file,
+                 overwrite = overwrite, visualize = visualize)
+            
         if (len(mode) > 1):
             meta_file.modify_sheet_from_dict("beta", meta_data)
             meta_file.write_file()
         
         
         plt.close("all")
+    if ("dac" in mode):
+        np.save("dac.npy", np.asarray(dac_data))
     
     if (len(mode) != 3):
         meta_file.modify_sheet_from_dict("beta", meta_data)
@@ -828,6 +1272,11 @@ def main(mode = "power", overwrite = False, visualize = False):
 #main(["overall pac"], overwrite = True, visualize = True)
 #main(["specific pac"], overwrite = True, visualize = True)
 #main(["specific pac"], overwrite = False, visualize = True)
-main(["power"], overwrite = True, visualize = True)
+#main(["power"], overwrite = True, visualize = True)
+#main(["phase spike"], overwrite = True, visualize = True)
+
+#main(["phase data"], overwrite = True, visualize = True)
+#main(["absolute_pac"], overwrite = True, visualize = False)
+main(["dac"], overwrite = True, visualize = False)
 
 

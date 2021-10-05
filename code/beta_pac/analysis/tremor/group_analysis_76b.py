@@ -11,6 +11,10 @@ import os
 
 import finn.cleansing.outlier_removal as orem
 
+import matplotlib
+matplotlib.use("Qt5agg")
+import matplotlib.pyplot as plt
+
 def main():
     full_data = ods_reader.ods_data("../../../../data/meta.ods")
     (pre_labels, pre_data) = full_data.get_sheet_as_array("tremor")
@@ -71,8 +75,15 @@ def main():
     print("Tremor")
     for formula in formulas:
         for data_idx in range(len(data)):
-            tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-            print(np.asarray(tmp))
+            stats = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
+            print(np.asarray(stats))
+            
+            plt.figure()
+            plt.scatter(data[data_idx][:, 2], data[data_idx][:, 0])
+            plt.plot([np.min(data[data_idx][:, 2]), np.max(data[data_idx][:, 2])],
+                     [stats[3][1] + stats[3][0] * np.min(data[data_idx][:, 2]), stats[3][1] +
+                      stats[3][0] * np.max(data[data_idx][:, 2])])
+            plt.title(formula)
             # (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
             # tmp = np.asarray(tmp); tmp[:5, :] = np.around(np.asarray(tmp[:5, :], dtype = np.float32), 4)
             #---------------------------------------------------- for x in range(6):
@@ -80,7 +91,8 @@ def main():
                     #---------------------------------- print(tmp[x, y], end = "\t")
                 #--------------------------------------------------------- print("")
             
-            np.save("../../../../results/tremor/stats/76/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+            np.save("../../../../results/tremor/stats/76/stats_" + targets[data_idx] + ".npy", np.asarray(stats))
+    plt.show(block = True)
     
     
 main()

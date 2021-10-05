@@ -36,11 +36,6 @@ def get_values(path, subpath, mode):
     data_pac_b = list()
     data_pac_nb = list()
     for (f_idx, f_name) in enumerate(meta_info["file"]):
-
-        #=======================================================================
-        # if (f_name != "3304_tbd_s2_719"):
-        #     continue
-        #=======================================================================
         
         if (int(meta_info["valid_data"][f_idx]) == 0):
             continue

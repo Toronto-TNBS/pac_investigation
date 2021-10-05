@@ -11,6 +11,10 @@ import os
 
 import finn.cleansing.outlier_removal as orem
 
+import matplotlib
+matplotlib.use("Qt5agg")
+import matplotlib.pyplot as plt
+
 def main():
     full_data = ods_reader.ods_data("../../../../data/meta.ods")
     (pre_labels, pre_data) = full_data.get_sheet_as_array("tremor")
@@ -62,16 +66,26 @@ def main():
                 "target_value ~ pac + (1|patient_id) + (1|trial)", 
                 "target_value ~ lf + hf + (1|patient_id) + (1|trial)", 
                 "target_value ~ lf + hf + pac + (1|patient_id) + (1|trial)"]
+    plot_idx = [1, 2, 3, None, None]
+    
     #labels => ['target_value', 'lf', 'hf', 'patient id', 'trial', 'burst']
     factor_type = ["continuous", "continuous", "continuous", "continuous", "categorical", "categorical", "categorical"] 
     contrasts = "list(target_value = contr.sum, lf = contr.sum, hf = contr.sum, burst = contr.sum, patient_id = contr.sum, trial = contr.sum)"
     data_type = "gaussian"
     
     print("Tremor")
-    for formula in formulas:
+    for (formula_idx, formula) in enumerate(formulas):
         for data_idx in range(len(data)):
-            tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-            print(np.asarray(tmp))
+            stats= glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
+            print(np.asarray(stats))
+            
+            if (plot_idx[formula_idx] is not None):
+                plt.figure()
+                plt.scatter(data[data_idx][:, plot_idx[formula_idx]], data[data_idx][:, 0])
+                plt.plot([np.min(data[data_idx][:, plot_idx[formula_idx]]), np.max(data[data_idx][:, plot_idx[formula_idx]])],
+                         [stats[3][1] + stats[3][0] * np.min(data[data_idx][:, plot_idx[formula_idx]]), stats[3][1] +
+                          stats[3][0] * np.max(data[data_idx][:, plot_idx[formula_idx]])])
+                plt.title(formula)
             # (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
             # tmp = np.asarray(tmp); tmp[:5, :] = np.around(np.asarray(tmp[:5, :], dtype = np.float32), 4)
             #---------------------------------------------------- for x in range(6):
@@ -79,7 +93,8 @@ def main():
                     #---------------------------------- print(tmp[x, y], end = "\t")
                 #--------------------------------------------------------- print("")
             
-            np.save("../../../../results/tremor/stats/76/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+            np.save("../../../../results/tremor/stats/77/stats_" + targets[data_idx] + ".npy", np.asarray(stats))
+    plt.show(block = True)
     
     
 main()

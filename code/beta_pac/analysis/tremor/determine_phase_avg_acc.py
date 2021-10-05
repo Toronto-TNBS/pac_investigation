@@ -18,6 +18,10 @@ import finn.cleansing.outlier_removal as orem
 
 import finn.statistical.glmm as glmm
 
+import os
+
+import lmfit
+
 def get_values(path, subpath, mode, type):
     meta_data = methods.data_io.ods.ods_data("/mnt/data/Professional/UHN/pac_investigation/data/meta.ods")
     meta_info = meta_data.get_sheet_as_dict(mode)
@@ -35,15 +39,15 @@ def get_values(path, subpath, mode, type):
         if (int(meta_info["valid_data"][f_idx]) == 0):
             continue
         
-        if (type == "hf beta" and int(int(float(meta_info["hf auto"][f_idx]))) == 0):
+        if (type == "hf tremor" and int(int(float(meta_info["hf auto"][f_idx]))) == 0):
             continue
-        if (type == "hf non beta" and int(float(meta_info["hf auto"][f_idx])) == 1):
+        if (type == "hf non tremor" and int(float(meta_info["hf auto"][f_idx])) == 1):
             continue
-                
+        
+        if (os.path.exists(path + mode + subpath + f_name + ".pkl") == False):
+            continue
+        
         data = pickle.load(open(path + mode + subpath + f_name + ".pkl", "rb"))
-        
-        
-        #print(f_name, data[2])
         
         loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[4])), np.argmin(np.abs(data[7])))
         
@@ -78,7 +82,7 @@ def main(path, subpath, mode, type, axes):
     patients2 = out_rem.run(patients2, np.argmax(loc_fit2, axis = 1), max_std_dist = 2, min_samp_cnt = 5, axis = 0)
     trials2 = out_rem.run(trials2, np.argmax(loc_fit2, axis = 1), max_std_dist = 2, min_samp_cnt = 5, axis = 0)
     
-    print(mode, type, "%2.2f | %2.2f" % (np.float32(loc_data1.shape[0]/pre[0]), np.float32(loc_data2.shape[0]/pre[1]),))
+    print("%2.2f | %2.2f" % (np.float32(loc_data1.shape[0]/pre[0]), np.float32(loc_data2.shape[0]/pre[1]),))
     
     loc_data1_m = np.mean(loc_data1, axis = 0)
     loc_data2_m = np.mean(loc_data2, axis = 0)
@@ -89,22 +93,52 @@ def main(path, subpath, mode, type, axes):
     tmp = 361
     ideal_slope = np.sin(2 * np.pi * 1 * np.arange(0, tmp)/tmp)
     
-    sq_error_1 = np.sum(np.power((loc_data1 - ideal_slope), 2), axis = 1)
+    def __sine(x, phase, amp):
+        """
+        Internal method. Used in run_dmi to estimate the direct modulation index. The amount of PAC is quantified via a sine fit. This sine is defined by the following paramters:
+        
+        :param x: Samples
+        :param phase: Phase shift of the sine.
+        :param amp: Amplitude of the sine.
+        
+        :return: Returns the fitted sine at the locations indicated by x.
+        """
+        freq = 1
+        fs = 1
+        return amp * (np.sin(2 * np.pi * freq * (x - phase) / fs))
+    
+    ref_data_1 = np.average(loc_data1, axis = 0)
+    params = lmfit.Parameters()
+    params.add("phase", value = 0, min = -180, max = 180, vary = True)
+    params.add("amp", value = 1, vary = True)
+    model = lmfit.Model(__sine, nan_policy = "omit")
+    ideal_slope_1 = model.fit(ref_data_1, x = np.arange(0, 1, 1/len(ref_data_1)),
+                       params = params, max_nfev = 300).best_fit
+                    
+    ref_data_2 = np.average(loc_data2, axis = 0)   
+    params = lmfit.Parameters()
+    params.add("phase", value = 0, min = -180, max = 180, vary = True)
+    params.add("amp", value = 1, vary = True)
+    model = lmfit.Model(__sine, nan_policy = "omit")
+    ideal_slope_2 = model.fit(ref_data_2, x = np.arange(0, 1, 1/len(ref_data_2)),
+                       params = params, max_nfev = 300).best_fit
+    
+    sq_error_1 = np.sum(np.power((loc_data1 - ideal_slope_1), 2), axis = 1)
     loc_data1 = orem.run(np.copy(loc_data1), sq_error_1, 2, 5, 0)
     patients1 = orem.run(np.copy(patients1), sq_error_1, 2, 5, 0)
     trials1 = orem.run(np.copy(trials1), sq_error_1, 2, 5, 0)
-    sq_error_2 = np.sum(np.power((loc_data2 - ideal_slope), 2), axis = 1)
+    sq_error_2 = np.sum(np.power((loc_data2 - ideal_slope_2), 2), axis = 1)
     loc_data2 = orem.run(np.copy(loc_data2), sq_error_2, 2, 5, 0)
     patients2 = orem.run(np.copy(patients2), sq_error_2, 2, 5, 0)
     trials2 = orem.run(np.copy(trials2), sq_error_2, 2, 5, 0)
     
-    sq_error_1 = np.sum(np.power((loc_data1 - ideal_slope), 2), axis = 1)
-    sq_error_2 = np.sum(np.power((loc_data2 - ideal_slope), 2), axis = 1)
+    sq_error_1 = np.sum(np.power((loc_data1 - ideal_slope_1), 2), axis = 1)
+    sq_error_2 = np.sum(np.power((loc_data2 - ideal_slope_2), 2), axis = 1)
     print(loc_data1.shape)
     print(loc_data2.shape)
      
-    axes[0].plot(ideal_slope, "--", color = "red", zorder = 2, alpha = 0.5, label = "lfp")
-    axes[1].plot(ideal_slope, "--", color = "red", zorder = 2, alpha = 0.5, label = "lfp")
+    axes[0].plot(ideal_slope_1, "--", color = "red", zorder = 2, alpha = 0.5, label = "lfp")
+    axes[1].plot(ideal_slope_2, "--", color = "red", zorder = 2, alpha = 0.5, label = "lfp")
     axes[0].plot(loc_data1_m, color = "black", label = "avg. burst", zorder = 3)
     for x in range(loc_data1.shape[0]):
         axes[0].plot(loc_data1[x, :], color = "green", alpha = 0.25, zorder = 1)
@@ -125,8 +159,8 @@ def main(path, subpath, mode, type, axes):
             np.concatenate((np.expand_dims(sq_error_2, axis = 1), np.expand_dims(patients2, axis = 1), np.expand_dims(trials2, axis = 1)), axis = 1))
 
 (fig, axes) = plt.subplots(2, 2)
-(data1, data2) = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "beta", "hf beta", axes[0, :])
-(data3, data4) = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "beta", "hf non beta", axes[1, :])
+(data1, data2) = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/4/", "tremor", "hf tremor", axes[0, :])
+(data3, data4) = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/4/", "tremor", "hf non tremor", axes[1, :])
 
 data1 = np.asarray(data1, dtype = np.float32); data2 = np.asarray(data2, dtype = np.float32);
 data3 = np.asarray(data3, dtype = np.float32); data4 = np.asarray(data4, dtype = np.float32)
@@ -148,10 +182,10 @@ stats = glmm.run(stat_data_14, ["score", "patient", "trial", "type"], ["continuo
                  "gaussian")
 print(np.asarray(stats))
 
-axes[0, 0].set_title("Highly beta, mostly burst")
-axes[0, 1].set_title("Highly beta, mostly non burst")
-axes[1, 0].set_title("Little beta, mostly burst")
-axes[1, 1].set_title("Little beta, mostly non burst")
+axes[0, 0].set_title("Highly tremor, mostly burst")
+axes[0, 1].set_title("Highly tremor, mostly non burst")
+axes[1, 0].set_title("Little tremor, mostly burst")
+axes[1, 1].set_title("Little tremor, mostly non burst")
 plt.tight_layout()
 plt.show(block = True)
 

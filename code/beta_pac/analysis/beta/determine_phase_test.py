@@ -125,8 +125,8 @@ def main(path, subpath, mode, type, axes):
             np.concatenate((np.expand_dims(sq_error_2, axis = 1), np.expand_dims(patients2, axis = 1), np.expand_dims(trials2, axis = 1)), axis = 1))
 
 (fig, axes) = plt.subplots(2, 2)
-(data1, data2) = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "beta", "hf beta", axes[0, :])
-(data3, data4) = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "beta", "hf non beta", axes[1, :])
+(data1, data2) = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/test/", "beta", "hf beta", axes[0, :])
+(data3, data4) = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/test/", "beta", "hf non beta", axes[1, :])
 
 data1 = np.asarray(data1, dtype = np.float32); data2 = np.asarray(data2, dtype = np.float32);
 data3 = np.asarray(data3, dtype = np.float32); data4 = np.asarray(data4, dtype = np.float32)
