@@ -1,6 +1,5 @@
 '''
 Created on Sep 29, 2021
-
 @author: voodoocode
 '''
 
@@ -15,7 +14,7 @@ import scipy.stats
 #Negative (e.g. burst[1]) indicates the LFP 'driving'
 
 def main(mode, threshold = 0.1):
-    data = np.load("/mnt/data/Professional/UHN/pac_investigation/code/beta_pac/analysis/beta/test.npy")
+    data = np.load("/mnt/data/Professional/UHN/pac_investigation/code/beta_pac/analysis/beta/dac.npy")
 
     if (mode == 1 or mode == 3):
         data = data[np.asarray(data[:, 4], dtype = float) == 1, :]
@@ -56,5 +55,3 @@ for (mode_idx, mode) in enumerate([0, 1, 2, 3]):
     plt.bar(x = np.arange(0, len(values)) + (len(thresholds) + 1) * mode_idx, height = values, width = 0.8)
     print("\n")
 plt.show(block = True)
-
-
