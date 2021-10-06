@@ -9,6 +9,8 @@ import finn.statistical.glmm as glmm
 import numpy as np
 import os
 
+import finn.cleansing.outlier_removal as orem
+
 def main():
     full_data = ods_reader.ods_data("../../../../data/meta.ods")
     (pre_labels, pre_data) = full_data.get_sheet_as_array("beta")
@@ -20,6 +22,7 @@ def main():
     hf_beta_idx = pre_labels.index("beta overall strength 1") 
     pac_burst_strength_idx = pre_labels.index("pac burst strength 2")
     pac_non_burst_strength_idx = pre_labels.index("pac non burst strength 2")
+    spikes = pre_labels.index("spikes_per_second")
     spikes_within = pre_labels.index("spikes_within")
     spikes_outside = pre_labels.index("spikes_outside")
     valid_idx = pre_labels.index("valid_data")
@@ -37,6 +40,9 @@ def main():
         data.append(list())
         for row_idx in range(len(pre_data)):
             if (int(pre_data[row_idx, valid_idx]) == 0):
+                continue
+            
+            if (float(pre_data[row_idx, spikes]) < 20 or float(pre_data[row_idx, spikes]) > 60):
                 continue
             
             loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [1]))
@@ -57,6 +63,11 @@ def main():
         labels.append(loc_labels)
 
     data = np.asarray(data, dtype = np.float32)
+    
+    print(data.shape)
+    data = orem.run(data, data[0, :, 0], 2.5, 5, 1)
+    print(data.shape)
+    
     
     formula = "target_value ~ burst + lf + hf + pac + burst:lf + burst:hf + burst:pac + (1|patient_id) + (1|trial)"
     #labels => ['target_value', 'lf', 'hf', 'patient id', 'trial', 'burst']

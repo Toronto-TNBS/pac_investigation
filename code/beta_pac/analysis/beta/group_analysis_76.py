@@ -76,10 +76,9 @@ def main():
     
     print("beta")
     for data_idx in range(len(data)):
-        tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-        print(np.asarray(tmp))
+        stats = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
+        print(np.asarray(stats))
         
-        np.save("../../../../results/beta/stats/76/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
-    
-    
+        np.save("../../../../results/beta/stats/76/stats_" + targets[data_idx] + ".npy", np.asarray(stats))
+
 main()

@@ -23,18 +23,14 @@ def main():
     lf_beta_idx = pre_labels.index("beta lfp strength 1")
     hf_beta_idx = pre_labels.index("beta overall strength 1") 
     pac_burst_strength_idx = pre_labels.index("pac burst strength 2")
-    pac_non_burst_strength_idx = pre_labels.index("pac non burst strength 2")
     spikes = pre_labels.index("spikes_per_second")
-    spikes_within = pre_labels.index("spikes_within_per_second")
-    spikes_outside = pre_labels.index("spikes_outside_per_second")
+    spikes_w = pre_labels.index("spikes_outside_per_second")
     valid_idx = pre_labels.index("valid_data")
     pre_labels = [pre_label.replace(" auto","") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
 
-    idx_list_burst_0 = np.asarray([spikes_within, lf_beta_idx, hf_beta_idx, pac_burst_strength_idx, patient_id_idx, trial_idx])
-    idx_list_non_burst_0 = np.asarray([spikes_outside, lf_beta_idx, hf_beta_idx, pac_non_burst_strength_idx, patient_id_idx, trial_idx])
+    idx_list_burst_0 = np.asarray([spikes_w, lf_beta_idx, hf_beta_idx, pac_burst_strength_idx, patient_id_idx, trial_idx])
     
     idx_lists_burst = [idx_list_burst_0]
-    idx_lists_non_burst = [idx_list_non_burst_0]
     
     data = list()
     labels = list()
@@ -65,28 +61,46 @@ def main():
     data = np.asarray(data, dtype = np.float32)
     
     print(data.shape)
-    data = orem.run(data, data[0, :, 0], 2, 5, 1)
+    data = orem.run(data, data[0, :, 0], 2.5, 5, 1)
     print(data.shape)
     
-    formula = "target_value ~ hf + (1|patient_id) + (1|trial)"
+    formulas = ["target_value ~ lf + (1|patient_id) + (1|trial)", 
+                "target_value ~ hf + (1|patient_id) + (1|trial)", 
+                "target_value ~ pac + (1|patient_id) + (1|trial)", 
+                "target_value ~ lf + hf + (1|patient_id) + (1|trial)", 
+                "target_value ~ lf + hf + pac + (1|patient_id) + (1|trial)"]
+    
+    plot_idx = [1, 2, 3, None, None]
+    
     #labels => ['target_value', 'lf', 'hf', 'patient id', 'trial', 'burst']
     factor_type = ["continuous", "continuous", "continuous", "continuous", "categorical", "categorical", "categorical"] 
     contrasts = "list(target_value = contr.sum, lf = contr.sum, hf = contr.sum, burst = contr.sum, patient_id = contr.sum, trial = contr.sum)"
     data_type = "gaussian"
     
     print("beta")
-    for data_idx in range(len(data)):
-        stats = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-        print(np.asarray(stats))
+    for (formula_idx, formula) in enumerate(formulas):
+        for data_idx in range(len(data)):
+            stats = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
+            print(np.asarray(stats))
             
-        plt.figure()
-        plt.scatter(data[data_idx][:, 2], data[data_idx][:, 0])
-        plt.plot([np.min(data[data_idx][:, 2]), np.max(data[data_idx][:, 2])],
-                 [stats[3][1] + stats[3][0] * np.min(data[data_idx][:, 2]), stats[3][1] +
-                  stats[3][0] * np.max(data[data_idx][:, 2])])
-        plt.title(formula)
-        
-        np.save("../../../../results/beta/stats/76/stats_" + targets[data_idx] + ".npy", np.asarray(stats))
+            if (plot_idx[formula_idx] is not None):
+                plt.figure()
+                plt.title(formula)
+                plt.scatter(data[data_idx][:, plot_idx[formula_idx]], data[data_idx][:, 0])
+                plt.plot([np.min(data[data_idx][:, plot_idx[formula_idx]]), np.max(data[data_idx][:, plot_idx[formula_idx]])],
+                         [stats[3][1] + stats[3][0] * np.min(data[data_idx][:, plot_idx[formula_idx]]), stats[3][1] +
+                          stats[3][0] * np.max(data[data_idx][:, plot_idx[formula_idx]])])
+                plt.title(formula)
+            
+            # (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
+            # tmp = np.asarray(tmp); tmp[:5, :] = np.around(np.asarray(tmp[:5, :], dtype = np.float32), 4)
+            #---------------------------------------------------- for x in range(6):
+                #------------------------------------------------ for y in range(7):
+                    #---------------------------------- print(tmp[x, y], end = "\t")
+                #--------------------------------------------------------- print("")
+            
+            np.save("../../../../results/beta/stats/77/stats_" + targets[data_idx] + ".npy", np.asarray(stats))
     plt.show(block = True)
+    
     
 main()

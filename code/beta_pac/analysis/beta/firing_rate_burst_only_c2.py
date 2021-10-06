@@ -24,10 +24,11 @@ def main():
     hf_beta_idx = pre_labels.index("beta overall strength 1") 
     pac_burst_strength_idx = pre_labels.index("pac burst strength 2")
     spikes = pre_labels.index("spikes_per_second")
+    spikes_w = pre_labels.index("spikes_within_per_second")
     valid_idx = pre_labels.index("valid_data")
     pre_labels = [pre_label.replace(" auto","") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
 
-    idx_list_burst_0 = np.asarray([spikes, lf_beta_idx, hf_beta_idx, pac_burst_strength_idx, patient_id_idx, trial_idx])
+    idx_list_burst_0 = np.asarray([spikes_w, lf_beta_idx, hf_beta_idx, pac_burst_strength_idx, patient_id_idx, trial_idx])
     
     idx_lists_burst = [idx_list_burst_0]
     
@@ -84,6 +85,7 @@ def main():
             
             if (plot_idx[formula_idx] is not None):
                 plt.figure()
+                plt.title(formula)
                 plt.scatter(data[data_idx][:, plot_idx[formula_idx]], data[data_idx][:, 0])
                 plt.plot([np.min(data[data_idx][:, plot_idx[formula_idx]]), np.max(data[data_idx][:, plot_idx[formula_idx]])],
                          [stats[3][1] + stats[3][0] * np.min(data[data_idx][:, plot_idx[formula_idx]]), stats[3][1] +

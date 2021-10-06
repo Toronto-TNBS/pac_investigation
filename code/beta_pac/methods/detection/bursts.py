@@ -8,7 +8,7 @@ import numpy as np
 import scipy.signal
 import finn.filters.frequency as ff
 
-def identify_peaks(in_data, fs, filter_f_min = 70, filter_f_max = None, spread = 1.5, peak_thresh = 1.1, polarity = "negative", 
+def identify_peaks(in_data, fs, filter_f_min = 300, filter_f_max = None, spread = 1.5, peak_thresh = 1.1, polarity = "negative", 
                    buffer_area = None):
     
     if (buffer_area == "auto"):
