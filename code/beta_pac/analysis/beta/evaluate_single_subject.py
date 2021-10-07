@@ -222,7 +222,6 @@ def calculate_pac(data, fs_data01, peak_spread, peak_thresh,
         
     return (score_default, score_burst, score_non_burst)
 
-
 def default_beta_phase_pac(data, fs_data01, peak_spread, peak_thresh,
                   lf_f_min, lf_f_max, hf_f_min, hf_f_max,
                   visualize = True, outpath = None, file = None, overwrite = True):
