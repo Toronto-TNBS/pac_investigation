@@ -65,7 +65,7 @@ def main():
     print(data.shape)
     
     formulas = ["target_value ~ lf + (1|patient_id) + (1|trial)", 
-                "target_value ~ hf + (1|patient_id) + (1|trial)", 
+                "target_value ~ hf + (1|patient_id) + (1|trial)",
                 "target_value ~ pac + (1|patient_id) + (1|trial)", 
                 "target_value ~ lf + hf + (1|patient_id) + (1|trial)", 
                 "target_value ~ lf + hf + pac + (1|patient_id) + (1|trial)"]

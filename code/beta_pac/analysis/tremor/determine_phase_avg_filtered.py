@@ -168,7 +168,7 @@ def main(path, subpath, mode, tremor_type, axes, axes2, dir_type, dir_thresh):
     return (np.concatenate((np.expand_dims(sq_error_1, axis = 1), np.expand_dims(patients1, axis = 1), np.expand_dims(trials1, axis = 1)), axis = 1),
             np.concatenate((np.expand_dims(sq_error_2, axis = 1), np.expand_dims(patients2, axis = 1), np.expand_dims(trials2, axis = 1)), axis = 1))
 
-dir_type = 1
+dir_type = -1
 dir_thresh = 0.1
 
 (fig, axes) = plt.subplots(2, 2)

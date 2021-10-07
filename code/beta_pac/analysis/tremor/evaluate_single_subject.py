@@ -34,7 +34,7 @@ image_format = ".svg"
 
 def preprocess_data(in_data, fs, peak_spread, peak_thresh):
     in_data = np.copy(in_data)
-    binarized_data = methods.detection.bursts.identify_peaks(in_data, fs, 70, None, peak_spread, peak_thresh, "negative", "auto")
+    binarized_data = methods.detection.bursts.identify_peaks(in_data, fs, 300, None, peak_spread, peak_thresh, "negative", "auto")
     
     burst_data = transform_burst(in_data, binarized_data)
     non_burst_data = transform_non_burst(in_data, binarized_data)
@@ -1055,7 +1055,15 @@ def main(mode = "power", overwrite = False, visualize = False):
 #main(["cnt_burst"], overwrite = True, visualize = True)
 #main(["acc pac"], overwrite = False, visualize = True)
 #main(["specific pac acc"], overwrite = False, visualize = True)
-main(["dac"], overwrite = False, visualize = True)
+#main(["dac"], overwrite = False, visualize = True)
 #main(["power", "overall pac", "specific pac", "acc pac"], overwrite = False, visualize = True)
+
+#main(["power"], overwrite = True, visualize = False)
+#main(["overall pac"], overwrite = True, visualize = False)
+main(["specific pac"], overwrite = True, visualize = False)
+#main(["cnt_burst"], overwrite = True, visualize = False)
+#main(["dac"], overwrite = False, visualize = True)
+
+
 
 
