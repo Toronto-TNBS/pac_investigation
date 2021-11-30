@@ -81,7 +81,7 @@ def main():
     for (formula_idx, formula) in enumerate(formulas):
         for data_idx in range(len(data)):
             stats= glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-            print(np.asarray(stats))
+            print(np.asarray(stats), float(np.asarray(stats)[2, 0])*6)
             
             if (plot_idx[formula_idx] is not None):
                 plt.figure()

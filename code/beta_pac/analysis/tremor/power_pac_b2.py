@@ -50,6 +50,8 @@ def main():
 
     data = np.asarray(data, dtype = np.float32)
     
+    #Hypothesis count = 3
+    
     formula = "target_value ~ burst + lf + hf + (1|patient_id) + (1|trial)"
     #formula = "target_value ~ burst + (1|patient_id) + (1|trial)"
     #labels => ['target_value', 'patient id', 'trial', 'burst']
@@ -57,13 +59,12 @@ def main():
     contrasts = "list(target_value = contr.sum, lf = contr.sum, hf = contr.sum, burst = contr.sum, patient_id = contr.sum, trial = contr.sum)"
     data_type = "gaussian"
     
-    for data_idx in range(len(data)):
-        tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-        (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
-        
-        print(np.asarray(tmp))
-        
-        np.save("../../../../results/tremor/stats/25/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+    data = data[0]
+    labels = labels[0]
+    
+    stats = glmm.run(data, labels, factor_type, formula, contrasts, data_type)
+    print(np.asarray(stats), float(np.asarray(stats)[2, 0])*3, float(np.asarray(stats)[2, 1])*3, float(np.asarray(stats)[2, 2])*3)
+
     
     
 main()

@@ -44,14 +44,31 @@ def main(mode, threshold = 0.1):
 
     return ([defaults[0], defaults[1], defaults[0]+defaults[1], bursts[0], bursts[1], bursts[0]+bursts[1], non_bursts[0], non_bursts[1], non_bursts[0]+non_bursts[1]])
 
+signal_type = 3
+
 fig = plt.figure()
 thresholds = [0.1, 0.125, 0.15, 0.175, 0.2]
-for (mode_idx, mode) in enumerate([0, 1, 2, 3]):
+all_values = list()
+for (mode_idx, mode) in enumerate([0, 1, 2, 3]): #all #hf beta #lf beta #both
     values = list()
     for (thresh_idx, threshold) in enumerate(thresholds):
         loc_vals = main(mode, threshold)
-        values.append(loc_vals[3]/loc_vals[5])
-        print(scipy.stats.norm.cdf(-((loc_vals[3]/loc_vals[5]) - 0.5)/(np.sqrt(0.5*(1-0.5)/loc_vals[5])))*2, loc_vals[5])
+        values.append(loc_vals[signal_type]/loc_vals[signal_type+2])
+        print(scipy.stats.norm.cdf(-((loc_vals[signal_type]/loc_vals[signal_type+2]) - 0.5)/(np.sqrt(0.5*(1-0.5)/loc_vals[signal_type+2])))*2, loc_vals[signal_type+2])
+        print(loc_vals[signal_type], loc_vals[signal_type + 1])
     plt.bar(x = np.arange(0, len(values)) + (len(thresholds) + 1) * mode_idx, height = values, width = 0.8)
     print("\n")
+    all_values.append(values)
+fig = plt.figure()
+plt.pie([all_values[0][0], 1-all_values[0][0]]); print([all_values[0][0], 1-all_values[0][0]])
 plt.show(block = True)
+
+
+
+
+
+
+
+
+
+

@@ -11,6 +11,8 @@ import os
 
 import finn.cleansing.outlier_removal as orem
 
+import matplotlib
+matplotlib.use("Qt5agg")
 import matplotlib.pyplot as plt
 
 def main():
@@ -21,14 +23,13 @@ def main():
     patient_id_idx = pre_labels.index("patient_id")
     trial_idx = pre_labels.index("trial")
     lf_beta_idx = pre_labels.index("beta lfp strength 1")
-    hf_beta_idx = pre_labels.index("beta overall strength 1") 
+    hf_beta_idx = pre_labels.index("beta overall strength 1")
     pac_burst_strength_idx = pre_labels.index("pac burst strength 2")
     spikes = pre_labels.index("spikes_per_second")
     valid_idx = pre_labels.index("valid_data")
     pre_labels = [pre_label.replace(" auto","") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
 
     idx_list_burst_0 = np.asarray([spikes, lf_beta_idx, hf_beta_idx, pac_burst_strength_idx, patient_id_idx, trial_idx])
-    
     idx_lists_burst = [idx_list_burst_0]
     
     data = list()
@@ -39,7 +40,7 @@ def main():
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
             
-            if (float(pre_data[row_idx, spikes]) < 20 or float(pre_data[row_idx, spikes]) > 60):
+            if (float(pre_data[row_idx, spikes]) < 10 or float(pre_data[row_idx, spikes]) > 90):
                 continue
             
             loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [1]))
@@ -63,11 +64,10 @@ def main():
     data = orem.run(data, data[0, :, 0], 2.5, 5, 1)
     print(data.shape)
     
-    formulas = ["target_value ~ lf + (1|patient_id) + (1|trial)", 
-                "target_value ~ hf + (1|patient_id) + (1|trial)", 
-                "target_value ~ pac + (1|patient_id) + (1|trial)", 
-                "target_value ~ lf + hf + (1|patient_id) + (1|trial)", 
-                "target_value ~ lf + hf + pac + (1|patient_id) + (1|trial)"]
+    #Hypothesis count = 6
+    
+    formulas = ["target_value ~ lf + (1|patient_id) + (1|trial)",
+                "target_value ~ hf + (1|patient_id) + (1|trial)",]
     
     plot_idx = [1, 2, 3, None, None]
     
@@ -80,7 +80,7 @@ def main():
     for (formula_idx, formula) in enumerate(formulas):
         for data_idx in range(len(data)):
             stats = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-            print(np.asarray(stats))
+            print(np.asarray(stats), float(np.asarray(stats)[2, 0])*6)
             
             if (plot_idx[formula_idx] is not None):
                 plt.figure()

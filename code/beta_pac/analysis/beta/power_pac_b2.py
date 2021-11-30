@@ -59,29 +59,27 @@ def main():
     #data[0, :, 2] = np.concatenate((np.zeros((133)), np.ones((133))))# np.random.permutation(np.random.random_sample(data[0, :, 2].shape[0]))
     #np.save("tmp2.npy", data)
     
+    #Hypothesis count = 12
     
     formula = "target_value ~ burst + lf + hf + burst:lf + burst:hf + lf:hf + (1|patient_id) + (1|trial)"
-    #formula = "target_value ~ burst + hf + burst:hf + (1|patient_id) + (1|trial)"
-    #formula = "target_value ~ burst + lf + burst:lf + (1|patient_id) + (1|trial)"
-    #formula = "target_value ~ lf + (1|patient_id) + (1|trial)"
-    #labels => ['target_value', 'lf', 'hf', 'patient id', 'trial', 'burst']
     factor_type = ["continuous", "continuous", "continuous", "categorical", "categorical", "categorical"] 
     contrasts = "list(target_value = contr.sum, lf = contr.sum, hf = contr.sum, burst = contr.sum, patient_id = contr.sum, trial = contr.sum)"
     data_type = "gaussian"
     
-    for data_idx in range(len(data)):
-        tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-        (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
-        tmp = np.asarray(tmp); tmp[:5, :] = np.around(np.asarray(tmp[:5, :], dtype = np.float32), 4) 
-        for x in range(6):
-            for y in range(7):
-                print(tmp[x, y], end = "\t")
-            print("")
-        
-        print(np.max(data[0][:, 2]) - np.min(data[0][:, 2]))    # 2.704883801 increase
-                                                                #(0,3143 + (0,2218−0)×2,4158926) ÷ 0,3143
-        
-        np.save("../../../../results/beta/stats/25/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+    stats = glmm.run(data[0], labels[0], factor_type, formula, contrasts, data_type)
+    print(np.asarray(stats), float(np.asarray(stats)[2, 4])*12)
+    
+    burst_data = data[0][np.argwhere(data[0][:, -1] == 1).squeeze(), :]
+    non_burst_data = data[0][np.argwhere(data[0][:, -1] == 0).squeeze(), :]
+    formula = "target_value ~ lf + hf + lf:hf + (1|patient_id) + (1|trial)"
+    
+    
+    stats = glmm.run(burst_data, labels[0], factor_type, formula, contrasts, data_type)
+    print(np.asarray(stats), float(np.asarray(stats)[2, 1])*12)
+    #feat_idx = 1; print(float(stats[2, 1])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) - float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) + float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1])))
+    
+    stats = glmm.run(non_burst_data, labels[0], factor_type, formula, contrasts, data_type)
+    print(np.asarray(stats), float(np.asarray(stats)[2, 1])*12)
     
     
 main()

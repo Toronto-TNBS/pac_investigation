@@ -69,9 +69,7 @@ def main1():
         tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
         (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
         
-        print(targets[data_idx], np.asarray(tmp))
-        
-        np.save("../../../../results/beta/stats/17/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        print(targets[data_idx], np.asarray(tmp), float(np.asarray(tmp)[2, 2]) * 7)
 
 
 def main2():
@@ -129,41 +127,33 @@ def main2():
     contrasts = "list(target_value = contr.sum, lf = contr.sum, hf = contr.sum, burst = contr.sum, patient_id = contr.sum, trial = contr.sum)"
     data_type = "gaussian"
     
+    #Hypothesis count = 7
+    
     formula = "target_value ~ structured + (1|patient_id) + (1|trial)"
     for data_idx in range(len(data)):
         tmp = glmm.run(data[data_idx, np.argwhere(data[data_idx, :, -2] == 1).squeeze(), :], labels[data_idx], factor_type, formula, contrasts, data_type)
         (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
         
-        print("burst", targets[data_idx], np.asarray(tmp))
-        
-        #(0,28776970628832893 + (0,43985741193182226− 0) × 1)÷0,28776970628832893
-        
-        np.save("../../../../results/beta/stats/17/stats_b_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        print("burst", targets[data_idx], np.asarray(tmp), float(np.asarray(tmp)[2, 0])*7)
     
     for data_idx in range(len(data)):
         tmp = glmm.run(data[data_idx, np.argwhere(data[data_idx, :, -2] == 0).squeeze(), :], labels[data_idx], factor_type, formula, contrasts, data_type)
         (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
         
-        print("non burst", targets[data_idx], np.asarray(tmp))
-        
-        np.save("../../../../results/beta/stats/17/stats_nb_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        print("non burst", targets[data_idx], np.asarray(tmp), float(np.asarray(tmp)[2, 0])*7)
     
     formula = "target_value ~ burst + (1|patient_id) + (1|trial)"
     for data_idx in range(len(data)):
         tmp = glmm.run(data[data_idx, np.argwhere(data[data_idx, :, -1] == 1).squeeze(), :], labels[data_idx], factor_type, formula, contrasts, data_type)
         (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
         
-        print("structured", targets[data_idx], np.asarray(tmp))
-        
-        np.save("../../../../results/beta/stats/17/stats_s_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        print("structured", targets[data_idx], np.asarray(tmp), float(np.asarray(tmp)[2, 0])*7)
     
     for data_idx in range(len(data)):
         tmp = glmm.run(data[data_idx, np.argwhere(data[data_idx, :, -1] == 0).squeeze(), :], labels[data_idx], factor_type, formula, contrasts, data_type)
         (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
         
-        print("non structured", targets[data_idx], np.asarray(tmp))
-        
-        np.save("non structured", "../../../../results/beta/stats/17/stats_ns_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        print("non structured", targets[data_idx], np.asarray(tmp), float(np.asarray(tmp)[2, 0])*7)
     
 main1()
 main2()

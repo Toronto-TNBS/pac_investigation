@@ -46,6 +46,8 @@ def main():
 
     data = np.asarray(data, dtype = np.float32)
     
+    #Hypothesis count = 1
+    
     formula = "target_value ~ burst + (1|patient_id) + (1|trial)"
     #labels => ['target_value', 'patient id', 'trial', 'burst']
     factor_type = ["continuous", "categorical", "categorical", "categorical", "categorical", "categorical"] 
@@ -53,12 +55,9 @@ def main():
     data_type = "gaussian"
     
     for data_idx in range(len(data)):
-        tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-        (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
-        
-        print(targets[data_idx], np.asarray(tmp))
-        
-        np.save("../../../../results/beta/stats/15/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+        stats = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
+        print(np.asarray(stats), float(np.asarray(stats)[2, 0])*1); stats = np.asarray(stats)
+        feat_idx = 0; print(float(stats[2, 0])*1, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) - float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) + float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1])))
     
     
 main()

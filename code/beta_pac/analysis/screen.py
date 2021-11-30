@@ -21,7 +21,7 @@ import os
 
 import methods.detection.bursts
 
-def main(mode = "beta"):
+def main(mode = "tremor"):
     meta = methods.data_io.ods.ods_data("../../../data/meta.ods")
     meta_data = meta.get_sheet_as_dict(mode)
     
@@ -31,6 +31,9 @@ def main(mode = "beta"):
         print(file)
         
         if (file == ""):
+            continue
+        
+        if (int(meta_data["height-checked"][file_idx]) == 1):
             continue
         
         #-------------------------------------- if (file != "2781_s2_147-BETA"):
@@ -54,7 +57,7 @@ def main(mode = "beta"):
         file_data_mod = np.copy(file_data)
         file_data_mod[file_data > 0] = 0
         height = meta_data["peak_thresh"][file_idx] if (meta_data["peak_thresh"][file_idx] != "") else 0
-        (peaks, _) = scipy.signal.find_peaks(np.abs(file_data_mod), height = float(height))
+        (peaks, _) = scipy.signal.find_peaks(np.abs(file_data_mod), height = float(height), distance = int(int(file_hdr[20]['fs'])/1000/2))
         
         data2 = np.asarray(pickle.load(open(in_path+file+".txt_conv_data.pkl", "rb"))[20])
         print(len(peaks), len(peaks)/len(data2) * int(file_hdr[20]['fs']))
@@ -68,7 +71,7 @@ def main(mode = "beta"):
         axes[0].plot([0, len(file_data)], [-float(meta_data["peak_thresh"][file_idx]), -float(meta_data["peak_thresh"][file_idx])],
                      color = "black", zorder = 2)
         axes[1].psd(file_data, NFFT = int(file_hdr[20]['fs']), Fs = int(file_hdr[20]['fs']))
-        fig.suptitle(file + ": " + str(height))
+        fig.suptitle(file + ": " + str(height) + " | %2.2f" % (float(len(peaks)/(len(file_data)/file_hdr[20]['fs'])), ))
         
         mngr = plt.get_current_fig_manager()
         # to put it into the upper left corner for example:
@@ -76,6 +79,7 @@ def main(mode = "beta"):
         geom = mngr.window.geometry()
         x,y,dx,dy = geom.getRect()
         mngr.window.setGeometry(0, 0, 950, 1080)
+        mngr.window.setGeometry(0, 100, 1920, 1080-100)
         
         fs = file_hdr[20]['fs']
         data = ff.fir(file_data, 300, None, 1, fs)

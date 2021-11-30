@@ -85,10 +85,12 @@ def main(path, subpath, mode, type, axes):
     print("%2.2f | %2.2f" % (np.float32(loc_data1.shape[0]/pre[0]), np.float32(loc_data2.shape[0]/pre[1]),))
     
     loc_data1_m = np.mean(loc_data1, axis = 0)
+    loc_data1_v = np.sqrt(np.var(loc_data1, axis = 0))
     loc_data2_m = np.mean(loc_data2, axis = 0)
-    min_val = np.min([loc_data1_m, loc_data2_m]); loc_data1_m -= min_val; loc_data2_m -= min_val
-    max_val = np.max([loc_data1_m, loc_data2_m]); loc_data1_m /= max_val; loc_data2_m /= max_val
-    loc_data1_m -= 0.5; loc_data1_m *= 2; loc_data2_m -= 0.5; loc_data2_m *= 2
+    loc_data2_v = np.sqrt(np.var(loc_data2, axis = 0))
+    # min_val = np.min([loc_data1_m, loc_data2_m]); loc_data1_m -= min_val; loc_data2_m -= min_val
+    # max_val = np.max([loc_data1_m, loc_data2_m]); loc_data1_m /= max_val; loc_data2_m /= max_val
+    # loc_data1_m -= 0.5; loc_data1_m *= 2; loc_data2_m -= 0.5; loc_data2_m *= 2
         
     tmp = 361
     ideal_slope = np.sin(2 * np.pi * 1 * np.arange(0, tmp)/tmp)
@@ -140,11 +142,17 @@ def main(path, subpath, mode, type, axes):
     axes[0].plot(ideal_slope_1, "--", color = "red", zorder = 2, alpha = 0.5, label = "lfp")
     axes[1].plot(ideal_slope_2, "--", color = "red", zorder = 2, alpha = 0.5, label = "lfp")
     axes[0].plot(loc_data1_m, color = "black", label = "avg. burst", zorder = 3)
-    for x in range(loc_data1.shape[0]):
-        axes[0].plot(loc_data1[x, :], color = "green", alpha = 0.25, zorder = 1)
+    #--------------------------------------- for x in range(loc_data1.shape[0]):
+        # axes[0].plot(loc_data1[x, :], color = "green", alpha = 0.25, zorder = 1)
+    axes[0].fill_between(np.arange(0, loc_data1_m.shape[0]),
+                         loc_data1_m + loc_data1_v, 
+                         loc_data1_m - loc_data1_v, color = "green", alpha = 0.25, zorder = 1)
     axes[1].plot(loc_data2_m, color = "black", label = "avg. non burst", zorder = 3)
-    for x in range(loc_data2.shape[0]):
-        axes[1].plot(loc_data2[x, :], color = "blue", alpha = 0.25, zorder = 1)
+    #--------------------------------------- for x in range(loc_data2.shape[0]):
+        # axes[1].plot(loc_data2[x, :], color = "blue", alpha = 0.25, zorder = 1)
+    axes[1].fill_between(np.arange(0, loc_data2_m.shape[0]),
+                         loc_data2_m + loc_data2_v, 
+                         loc_data2_m - loc_data2_v, color = "blue", alpha = 0.25, zorder = 1)
     
     axes[0].set_ylim((-2.5, 2.5))    
     axes[1].set_ylim((-2.5, 2.5))

@@ -54,3 +54,12 @@ def identify_peaks(in_data, fs, filter_f_min = 300, filter_f_max = None, spread 
         last_peak = peak
         
     return binarized_data
+
+
+
+
+
+
+
+
+

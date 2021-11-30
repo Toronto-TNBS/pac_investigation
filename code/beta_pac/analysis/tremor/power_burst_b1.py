@@ -44,22 +44,19 @@ def main3():
         loc_labels.append("burst")
         labels.append(loc_labels)
 
-    for data_idx in range(len(data)):
-        data[data_idx] = np.asarray(data[data_idx], np.float32)
     
-    formula = ["target_value ~ burst + (1|patient_id) + (1|trial)"]
+    formula = "target_value ~ burst + (1|patient_id) + (1|trial)"
     #labels => ['target_value', 'patient id', 'trial', 'lf_3', 'hf_3', 'burst']
-    factor_type = ["continuous", "categorical", "categorical", "categorical", "categorical", "categorical"] 
+    factor_type = ["continuous", "categorical", "categorical", "categorical"] 
     contrasts = "list(target_value = contr.sum, lf = contr.sum, hf = contr.sum, burst = contr.sum, patient_id = contr.sum, trial = contr.sum)"
     data_type = "gaussian"
     
-    for data_idx in range(len(data)):
-        tmp = glmm.run(data[data_idx], labels[data_idx], factor_type, formula[data_idx], contrasts, data_type)
-        (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
-        
-        print(targets[data_idx], np.asarray(tmp))
-        
-        np.save("../../../../results/tremor/stats/15/stats_" + targets[data_idx] + ".npy", np.asarray(tmp))
+    data = np.asarray(data[0], dtype = float)
+    labels = labels[0]
+    
+    stats = glmm.run(data, labels, factor_type, formula, contrasts, data_type)
+    print(np.asarray(stats), float(np.asarray(stats)[2, 0])*1); stats = np.asarray(stats)
+    feat_idx = 0; print(float(stats[2, 0])*1, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) - float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) + float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1])))
     
     
 main3()
