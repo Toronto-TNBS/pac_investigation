@@ -21,7 +21,7 @@ import finn.statistical.glmm as glmm
 import lmfit
 
 def get_values(path, subpath, mode, type):
-    meta_data = methods.data_io.ods.ods_data("/mnt/data/Professional/UHN/pac_investigation/data/meta.ods")
+    meta_data = methods.data_io.ods.ods_data("/mnt/data/Professional/UHN/projects/old/pac_investigation/data/meta.ods")
     meta_info = meta_data.get_sheet_as_dict(mode)
     meta_info["file"]
     
@@ -47,15 +47,15 @@ def get_values(path, subpath, mode, type):
         
         #print(f_name, data[2])
         
-        loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[4])), np.argmin(np.abs(data[7])))
+        loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[4])), np.argmin(np.abs(data[13])))
         
 #        loc_data = (np.argmax(data[0]), np.argmax(data[3]), np.argmax(data[6]))
         phase_shifts.append(loc_data)
         patients.append(meta_info["patient_id"][f_idx])
         trials.append(meta_info["trial"][f_idx])
-        data_list.append([data[1], data[4], data[7]])
-        sin_fit_list.append([data[0], data[3], data[6]])
-        fit_list0.append(data[1]); fit_list1.append(data[4]); fit_list2.append(data[7])
+        data_list.append([data[1], data[4], data[13]])
+        sin_fit_list.append([data[0], data[3], data[10]])
+        fit_list0.append(data[1]); fit_list1.append(data[4]); fit_list2.append(data[13])
 
     fit_list0 = np.asarray(fit_list0); fit_list1 = np.asarray(fit_list1); fit_list2 = np.asarray(fit_list2)
        
@@ -111,13 +111,15 @@ def main(path, subpath, mode, type, axes, ideal_ref_slope = None):
     amplitude_signal = np.mean(loc_data1, axis = 0)
     params = lmfit.Parameters()
     params.add("phase", value = 0, min = -180, max = 180, vary = True)
-    params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
+    params.add("amp", value = 0.5, min = .9, max = 1.1, vary = True)
+    #params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
     model = lmfit.Model(__sine, nan_policy = "omit")
     result1 = model.fit(amplitude_signal, x = np.arange(0, 1, 1/len(amplitude_signal)), params = params, max_nfev = 300)
     amplitude_signal = np.mean(loc_data2, axis = 0)
     params = lmfit.Parameters()
     params.add("phase", value = 0, min = -180, max = 180, vary = True)
-    params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
+    params.add("amp", value = 0.5, min = .9, max = 1.1, vary = True)
+    #params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
     model = lmfit.Model(__sine, nan_policy = "omit")
     result2 = model.fit(amplitude_signal, x = np.arange(0, 1, 1/len(amplitude_signal)), params = params, max_nfev = 300)
      
@@ -194,8 +196,8 @@ def main(path, subpath, mode, type, axes, ideal_ref_slope = None):
             ideal_ref_slope)
 
 (fig, axes) = plt.subplots(2, 2)
-(data1, data2, loc_burst_fit)   = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "tremor", "hf tremor", axes[0, :])
-(data3, data4, _)               = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor", axes[1, :], loc_burst_fit)
+(data1, data2, loc_burst_fit)   = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf tremor", axes[0, :])
+(data3, data4, _)               = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor", axes[1, :], loc_burst_fit)
 
 data1 = np.asarray(data1, dtype = np.float32);
 data2 = np.asarray(data2, dtype = np.float32);

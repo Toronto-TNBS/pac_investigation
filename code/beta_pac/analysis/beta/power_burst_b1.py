@@ -15,16 +15,24 @@ def main():
     targets = ["strength"]
     patient_id_idx = pre_labels.index("patient_id")
     trial_idx = pre_labels.index("trial")
-    beta_burst_strength_idx = pre_labels.index("beta burst strength 1")
-    beta_non_burst_strength_idx = pre_labels.index("beta non burst strength 1")
+    hf_beta_burst_strength_idx = pre_labels.index("beta burst strength 1")
+    hf_beta_non_burst_strength_idx = pre_labels.index("beta non burst strength 1")
+    lf_beta_burst_strength_idx = pre_labels.index("beta burst lfp strength 1")
+    lf_beta_non_burst_strength_idx = pre_labels.index("beta non burst lfp strength 1")
+    beta_burst_pac_strength_idx = pre_labels.index("pac burst strength 2")
+    beta_non_burst_pac_strength_idx = pre_labels.index("pac non burst strength 2")
     valid_idx = pre_labels.index("valid_data")
     pre_labels = [pre_label.replace(" auto","") if (type(pre_label) == str) else pre_label for pre_label in pre_labels]
 
-    idx_list_burst_0 = np.asarray([beta_burst_strength_idx, patient_id_idx, trial_idx])
-    idx_list_non_burst_0 = np.asarray([beta_non_burst_strength_idx, patient_id_idx, trial_idx])
+    idx_list_burst_0 = np.asarray([hf_beta_burst_strength_idx, patient_id_idx, trial_idx])
+    idx_list_non_burst_0 = np.asarray([hf_beta_non_burst_strength_idx, patient_id_idx, trial_idx])
+    idx_list_burst_1 = np.asarray([lf_beta_burst_strength_idx, patient_id_idx, trial_idx])
+    idx_list_non_burst_1 = np.asarray([lf_beta_non_burst_strength_idx, patient_id_idx, trial_idx])
+    idx_list_burst_2 = np.asarray([beta_burst_pac_strength_idx, patient_id_idx, trial_idx])
+    idx_list_non_burst_2 = np.asarray([beta_non_burst_pac_strength_idx, patient_id_idx, trial_idx])
     
-    idx_lists_burst = [idx_list_burst_0]
-    idx_lists_non_burst = [idx_list_non_burst_0]
+    idx_lists_burst = [idx_list_burst_0, idx_list_burst_1, idx_list_burst_2]
+    idx_lists_non_burst = [idx_list_non_burst_0, idx_list_non_burst_1, idx_list_non_burst_2]
     
     data = list()
     labels = list()
@@ -56,8 +64,9 @@ def main():
     
     for data_idx in range(len(data)):
         stats = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
-        print(np.asarray(stats), float(np.asarray(stats)[2, 0])*1); stats = np.asarray(stats)
-        feat_idx = 0; print(float(stats[2, 0])*1, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) - float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) + float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1])))
+        #print(np.asarray(stats), float(np.asarray(stats)[2, 0])*3)
+        stats = np.asarray(stats)
+        feat_idx = 0; print(float(stats[2, 0])*2, "%3.3f" % (float(stats[2, 0])*3,), "%05.03f, %05.03f, %05.03f" % ((float(stats[3, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) - float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) + float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1])))
     
     
 main()

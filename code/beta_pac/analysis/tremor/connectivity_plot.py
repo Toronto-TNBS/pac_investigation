@@ -14,7 +14,7 @@ import scipy.stats
 #Negative (e.g. burst[1]) indicates the LFP 'driving'
 
 def main(mode, threshold = 0.1):
-    data = np.load("/mnt/data/Professional/UHN/pac_investigation/code/beta_pac/analysis/tremor/dac.npy")
+    data = np.load("/mnt/data/Professional/UHN/projects/old/pac_investigation/code/beta_pac/analysis/tremor/dac.npy")
 
     if (mode == 1 or mode == 3):
         data = data[np.asarray(data[:, 4], dtype = float) == 1, :]

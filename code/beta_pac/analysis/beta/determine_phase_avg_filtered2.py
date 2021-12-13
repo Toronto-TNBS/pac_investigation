@@ -59,26 +59,18 @@ def get_values(path, subpath, mode, beta_type):
         
         offset = 0#6
         
-        loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[4])), np.argmin(np.abs(data[7+offset])))
+        loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[7])), np.argmin(np.abs(data[16])))
         curr_dir = directionality[dir_names.index(f_name), [1, 2]]
-        pac_scores.append([data[2], data[5], data[8+offset]])
+        pac_scores.append([data[2], data[8], data[17]])
         
-#        loc_data = (np.argmax(data[0]), np.argmax(data[3]), np.argmax(data[6]))
         phase_shifts.append(loc_data)
         patients.append(meta_info["patient_id"][f_idx])
         trials.append(meta_info["trial"][f_idx])
-        data_list.append([data[1], data[4], data[7+offset]])
-        sin_fit_list.append([data[0], data[3], data[6+offset]])
-        fit_list0.append(data[1]); fit_list1.append(data[4]); fit_list2.append(data[7+offset])
+        data_list.append([data[1], data[7], data[16]])
+        sin_fit_list.append([data[0], data[6], data[15]])
+        fit_list0.append(data[1]); fit_list1.append(data[7]); fit_list2.append(data[16])
         dir_list.append(curr_dir)
         f_names.append(f_name)
-        
-        #=======================================================================
-        # if (np.abs(np.argmax(data[3]) - 90) < 30):
-        #     print(f_name, np.argmax(data[3]))
-        # if (np.abs(np.argmax(data[3]) - 270) < 30):
-        #     print(f_name, np.argmax(data[3]))
-        #=======================================================================
 
     fit_list0 = np.asarray(fit_list0); fit_list1 = np.asarray(fit_list1); fit_list2 = np.asarray(fit_list2)
     dir_list = np.asarray(dir_list)
@@ -145,13 +137,15 @@ def main(path, subpath, mode, beta_type, axes, axes2, dir_type, dir_thresh, idea
     amplitude_signal = np.mean(loc_burst_data, axis = 0)
     params = lmfit.Parameters()
     params.add("phase", value = 0, min = -180, max = 180, vary = True)
-    params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
+    params.add("amp", value = 0.5, min = .9, max = 1.1, vary = True)
+    #params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
     model = lmfit.Model(__sine, nan_policy = "omit")
     result1 = model.fit(amplitude_signal, x = np.arange(0, 1, 1/len(amplitude_signal)), params = params, max_nfev = 300)
     amplitude_signal = np.mean(loc_non_burst_data, axis = 0)
     params = lmfit.Parameters()
     params.add("phase", value = 0, min = -180, max = 180, vary = True)
-    params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
+    params.add("amp", value = 0.5, min = .9, max = 1.1, vary = True)
+    #params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
     model = lmfit.Model(__sine, nan_policy = "omit")
     result2 = model.fit(amplitude_signal, x = np.arange(0, 1, 1/len(amplitude_signal)), params = params, max_nfev = 300)
         

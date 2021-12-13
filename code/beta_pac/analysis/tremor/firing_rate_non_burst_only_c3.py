@@ -42,7 +42,7 @@ def main():
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
             
-            if (float(pre_data[row_idx, spikes]) < 20 or float(pre_data[row_idx, spikes]) > 60):
+            if (float(pre_data[row_idx, spikes]) < 10 or float(pre_data[row_idx, spikes]) > 90):
                 continue
             
             loc_data = np.concatenate((pre_data[row_idx, idx_lists_burst[idx_list_idx]], [1]))
@@ -66,10 +66,7 @@ def main():
     print(data.shape)
     
     formulas = ["target_value ~ lf + (1|patient_id) + (1|trial)", 
-                "target_value ~ hf + (1|patient_id) + (1|trial)", 
-                "target_value ~ pac + (1|patient_id) + (1|trial)", 
-                "target_value ~ lf + hf + (1|patient_id) + (1|trial)", 
-                "target_value ~ lf + hf + pac + (1|patient_id) + (1|trial)"]
+                "target_value ~ hf + (1|patient_id) + (1|trial)",]
     plot_idx = [1, 2, 3, None, None]
     
     #labels => ['target_value', 'lf', 'hf', 'patient id', 'trial', 'burst']

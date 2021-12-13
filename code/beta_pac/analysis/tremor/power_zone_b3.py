@@ -132,12 +132,15 @@ def main2():
     for data_idx in range(len(data)):
         tmp = glmm.run(data[data_idx, np.argwhere(data[data_idx, :, -2] == 1).squeeze(), :], labels[data_idx], factor_type, formula, contrasts, data_type)
         (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
+        stats = np.asarray(tmp)
+        feat_idx = 0; print(float(stats[2, 0])*7, "%3.3f" % (float(stats[2, 0])*7,), "%05.03f, %05.03f, %05.03f" % ((float(stats[3, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) - float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1]), (float(stats[3, feat_idx]) + float(stats[4, feat_idx]) + float(stats[3, -1]))/float(stats[3, -1])))
         
         print("burst", targets[data_idx], np.asarray(tmp), float(np.asarray(tmp)[2, 0]) * 7)
     
     for data_idx in range(len(data)):
         tmp = glmm.run(data[data_idx, np.argwhere(data[data_idx, :, -2] == 0).squeeze(), :], labels[data_idx], factor_type, formula, contrasts, data_type)
         (chi_sq_scores, df, p_values, coefficients, std_error, factor_names) = tmp
+        stats = np.asarray(tmp)
         
         print("non burst", targets[data_idx], np.asarray(tmp), float(np.asarray(tmp)[2, 0]) * 7)
     

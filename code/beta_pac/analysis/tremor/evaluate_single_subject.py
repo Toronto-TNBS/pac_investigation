@@ -24,7 +24,7 @@ import methods.data_io.ods
 import os
 import scipy.stats
 
-thread_cnt = 11
+thread_cnt = 30
 #image_format = ".png"
 image_format = ".svg"
 
@@ -80,31 +80,43 @@ def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_
         hpf_data01 = ff.fir(np.asarray(data), 300, None, 1, fs_data01)
         
         # spike signal smooth-transform
-        (burst_hf_data, non_burst_hf_data) = preprocess_data(hpf_data01, fs_data01, peak_spread, peak_thresh, mode = "zero")        
-            
-        (bins, lpf_psd) = scipy.signal.welch(lpf_data01, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
-        (bins, bpf_psd) = scipy.signal.welch(bpf_data01, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
-        (_, raw_hf_data_psd) = scipy.signal.welch(np.abs(scipy.signal.hilbert(hpf_data01)), fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
-        (_, burst_hf_data_psd) = scipy.signal.welch(burst_hf_data, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
-        (_, non_burst_hf_data_psd) = scipy.signal.welch(non_burst_hf_data, fs_data01, window = "hanning", nperseg = fs_data01, noverlap = int(fs_data01/2), nfft = fs_data01, detrend = False, return_onesided = True)
+        (burst_hf_data, non_burst_hf_data) = preprocess_data(hpf_data01, fs_data01, peak_spread, peak_thresh, mode = "zero")
+        binarized_data = methods.detection.bursts.identify_peaks(hpf_data01, fs_data01, 300, None, peak_spread, peak_thresh, "negative", "auto")
+        
+        burst_lpf_data = np.zeros(lpf_data01.shape); burst_lpf_data[np.argwhere(binarized_data == 1)] = lpf_data01[np.argwhere(binarized_data == 1)]
+        non_burst_lpf_data = np.zeros(lpf_data01.shape); non_burst_lpf_data[np.argwhere(binarized_data == -1)] = lpf_data01[np.argwhere(binarized_data == -1)]
+        
+        factor = 4
+        
+        (bins, lpf_psd) = scipy.signal.welch(lpf_data01, fs_data01, window = "hanning", nperseg = int(fs_data01*factor), noverlap = int(fs_data01/2*factor), nfft = int(fs_data01*factor), detrend = False, return_onesided = True)
+        (_, burst_lpf_psd) = scipy.signal.welch(burst_lpf_data, fs_data01, window = "hanning", nperseg = int(fs_data01*factor), noverlap = int(fs_data01/2*factor), nfft = int(fs_data01*factor), detrend = False, return_onesided = True)
+        (_, non_burst_lpf_psd) = scipy.signal.welch(non_burst_lpf_data, fs_data01, window = "hanning", nperseg = int(fs_data01*factor), noverlap = int(fs_data01/2*factor), nfft = int(fs_data01*factor), detrend = False, return_onesided = True)
+        (_, bpf_psd) = scipy.signal.welch(bpf_data01, fs_data01, window = "hanning", nperseg = int(fs_data01*factor), noverlap = int(fs_data01/2*factor), nfft = int(fs_data01*factor), detrend = False, return_onesided = True)
+        (_, raw_hf_data_psd) = scipy.signal.welch(np.abs(scipy.signal.hilbert(hpf_data01)), fs_data01, window = "hanning", nperseg = int(fs_data01*factor), noverlap = int(fs_data01/2*factor), nfft = int(fs_data01*factor), detrend = False, return_onesided = True)
+        (_, burst_hf_data_psd) = scipy.signal.welch(burst_hf_data, fs_data01, window = "hanning", nperseg = int(fs_data01*factor), noverlap = int(fs_data01/2*factor), nfft = int(fs_data01*factor), detrend = False, return_onesided = True)
+        (_, non_burst_hf_data_psd) = scipy.signal.welch(non_burst_hf_data, fs_data01, window = "hanning", nperseg = int(fs_data01*factor), noverlap = int(fs_data01/2*factor), nfft = int(fs_data01*factor), detrend = False, return_onesided = True)
         
         start_bin = np.argmin(np.abs(bins - f_min))
         end_bin = np.argmin(np.abs(bins - f_max))
         
         t_data01 = np.arange(1, len(hpf_data01)+1, 1)/fs_data01
         
-        pickle.dump([t_data01, lpf_data01, bpf_data01,
+        pickle.dump([t_data01,
+                     lpf_data01, burst_lpf_data, non_burst_lpf_data,
+                     bpf_data01,
                      hpf_data01, burst_hf_data, non_burst_hf_data, 
-                     bins, lpf_psd, bpf_psd,
+                     bins,
+                     lpf_psd, burst_lpf_psd, non_burst_lpf_psd,
+                     bpf_psd,
                      raw_hf_data_psd, burst_hf_data_psd, non_burst_hf_data_psd],
                      open(outpath + "data/1/" + file + ".pkl", "wb"))
      
     else:
         tmp = pickle.load(open(outpath + "data/1/" + file + ".pkl", "rb"))
-        t_data01 = tmp[0]; lpf_data01 = tmp[1]; bpf_data01 = tmp[2];
-        hpf_data01 = tmp[3]; burst_hf_data = tmp[4]; non_burst_hf_data = tmp[5];
-        bins = tmp[6]; lpf_psd = tmp[7]; bpf_psd = tmp[8];
-        raw_hf_data_psd = tmp[9]; burst_hf_data_psd = tmp[10]; non_burst_hf_data_psd = tmp[11];
+        t_data01 = tmp[0]; lpf_data01 = tmp[1]; burst_lpf_data = tmp[2]; non_burst_lpf_data = tmp[3]; bpf_data01 = tmp[4];
+        hpf_data01 = tmp[5]; burst_hf_data = tmp[6]; non_burst_hf_data = tmp[7];
+        bins = tmp[8]; lpf_psd = tmp[9]; burst_lpf_psd = tmp[10]; non_burst_lpf_psd = tmp[11]; bpf_psd = tmp[12];
+        raw_hf_data_psd = tmp[13]; burst_hf_data_psd = tmp[14]; non_burst_hf_data_psd = tmp[15];
      
         start_bin = np.argmin(np.abs(bins - f_min))
         end_bin = np.argmin(np.abs(bins - f_max))
@@ -112,28 +124,41 @@ def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_
     ref_f_width = 2
     ref_lf_f_min = lf_min_f-ref_f_width if (lf_min_f-ref_f_width > 1) else 2
     ref_hf_f_min = hf_min_f-ref_f_width if (hf_min_f-ref_f_width > 1) else 2
+    buffer_l = 2; buffer_s = 1
     
-    #------------------------------------------------- print(lf_min_f, lf_max_f)
-    #------------------------------------------------- print(hf_min_f, hf_max_f)
+    bin_lf_min_f = np.argmin(np.abs(bins - lf_min_f)); bin_lf_max_f = np.argmin(np.abs(bins - lf_max_f))
+    ref_left_bin_lf_min_f = np.argmin(np.abs(bins - (lf_min_f - buffer_l))); left_ref_bin_lf_max_f = np.argmin(np.abs(bins - (lf_min_f - buffer_s)))
+    ref_right_bin_lf_min_f = np.argmin(np.abs(bins - (lf_max_f + buffer_s))); right_ref_bin_lf_max_f = np.argmin(np.abs(bins - (lf_max_f + buffer_l)))
+    bin_hf_min_f = np.argmin(np.abs(bins - hf_min_f)); bin_hf_max_f = np.argmin(np.abs(bins - hf_max_f))
+    ref_left_bin_hf_min_f = np.argmin(np.abs(bins - (hf_min_f - buffer_l))); left_ref_bin_hf_max_f = np.argmin(np.abs(bins - (hf_min_f - buffer_s)))
+    ref_right_bin_hf_min_f = np.argmin(np.abs(bins - (hf_max_f + buffer_s))); right_ref_bin_hf_max_f = np.argmin(np.abs(bins - (hf_max_f + buffer_l)))
     
-    lf_tremor_strength = np.average(lpf_psd[lf_min_f:lf_max_f]) / np.average([np.average(lpf_psd[(ref_lf_f_min):lf_min_f]), np.average(lpf_psd[lf_max_f:(lf_max_f+ref_f_width)])])
-    #lf_tremor_strength = np.average(lpf_psd[lf_min_f:lf_max_f]) / np.average(lpf_psd[lf_max_f:(lf_max_f+ref_f_width)])
-    hf_tremor_strength = np.average(raw_hf_data_psd[hf_min_f:hf_max_f]) / np.average([np.average(raw_hf_data_psd[(ref_hf_f_min):hf_min_f]), np.average(raw_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])])
-    #hf_tremor_strength = np.average(raw_hf_data_psd[hf_min_f:hf_max_f]) / np.average(raw_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])
-    burst_tremor_strength = np.average(burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average([np.average(burst_hf_data_psd[(ref_hf_f_min):hf_min_f]), np.average(burst_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])])
-    #burst_tremor_strength = np.average(burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average(raw_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])
-    #burst_tremor_strength = np.average(burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average(burst_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])
-    non_burst_tremor_strength = np.average(non_burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average([np.average(non_burst_hf_data_psd[(ref_hf_f_min):hf_min_f]), np.average(non_burst_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])])
-    #non_burst_tremor_strength = np.average(non_burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average(raw_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])
-    #non_burst_tremor_strength = np.average(non_burst_hf_data_psd[hf_min_f:hf_max_f]) / np.average(non_burst_hf_data_psd[hf_max_f:(hf_max_f+ref_f_width)])
+    #===========================================================================
+    # lpf_psd = np.log(lpf_psd)
+    # burst_lpf_psd = np.log(burst_lpf_psd)
+    # non_burst_lpf_psd = np.log(non_burst_lpf_psd)
+    # raw_hf_data_psd = np.log(raw_hf_data_psd)
+    # burst_hf_data_psd = np.log(burst_hf_data_psd)
+    # non_burst_hf_data_psd = np.log(non_burst_hf_data_psd)
+    #===========================================================================
     
-    lf_tremor_strength = np.log(lf_tremor_strength)
-    hf_tremor_strength = np.log(hf_tremor_strength)
-    burst_tremor_strength = np.log(burst_tremor_strength)
-    non_burst_tremor_strength = np.log(non_burst_tremor_strength)
-    
+    lf_tremor_strength = np.log(np.average(lpf_psd[bin_lf_min_f:bin_lf_max_f]) / np.average([np.average(lpf_psd[ref_left_bin_lf_min_f:left_ref_bin_lf_max_f]), np.average(lpf_psd[ref_right_bin_lf_min_f:right_ref_bin_lf_max_f])]))
+    hf_tremor_strength = np.log(np.average(raw_hf_data_psd[bin_hf_min_f:bin_hf_max_f]) / np.average([np.average(raw_hf_data_psd[ref_left_bin_hf_min_f:left_ref_bin_hf_max_f]), np.average(raw_hf_data_psd[ref_right_bin_hf_min_f:right_ref_bin_hf_max_f])]))
+    if (np.sum(binarized_data == 1) == 0):
+        burst_tremor_strength = -1
+        burst_lf_tremor_strength = -1
+    else:
+        burst_tremor_strength = np.log(np.average(burst_hf_data_psd[bin_hf_min_f:bin_hf_max_f]) / np.average([np.average(burst_hf_data_psd[ref_left_bin_hf_min_f:left_ref_bin_hf_max_f]), np.average(burst_hf_data_psd[ref_right_bin_hf_min_f:right_ref_bin_hf_max_f])]))
+        burst_lf_tremor_strength = np.log(np.average(burst_lpf_psd[bin_lf_min_f:bin_lf_max_f]) / np.average([np.average(burst_lpf_psd[ref_left_bin_lf_min_f:left_ref_bin_lf_max_f]), np.average(burst_lpf_psd[ref_right_bin_lf_min_f:right_ref_bin_lf_max_f])]))
+    if (np.sum(binarized_data == -1) == 0):
+        non_burst_tremor_strength = np.log(np.average(non_burst_hf_data_psd[bin_hf_min_f:bin_hf_max_f]) / np.average([np.average(non_burst_hf_data_psd[ref_left_bin_hf_min_f:left_ref_bin_hf_max_f]), np.average(non_burst_hf_data_psd[ref_right_bin_hf_min_f:right_ref_bin_hf_max_f])]))
+        non_burst_lf_tremor_strength = np.log(np.average(non_burst_lpf_psd[bin_lf_min_f:bin_lf_max_f]) / np.average([np.average(non_burst_lpf_psd[ref_left_bin_lf_min_f:left_ref_bin_lf_max_f]), np.average(non_burst_lpf_psd[ref_right_bin_lf_min_f:right_ref_bin_lf_max_f])]))
+    else:
+        non_burst_tremor_strength = -1
+        non_burst_lf_tremor_strength = -1
+        
     if (visualize):
-        (fig, axes) = plt.subplots(3, 2)
+        (fig, axes) = plt.subplots(5, 2)
         
         t_start = 0
         t_end = int(fs_data01/2)
@@ -143,41 +168,60 @@ def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_
         
         axes[0, 0].plot(t_data01[t_start:t_end], lpf_data01[t_start:t_end], color = "blue")
         axes[0, 0].plot(t_data01[t_start:t_end], bpf_data01[t_start:t_end], color = "orange")
-        axes[1, 0].plot(t_data01[t_start:t_end], hpf_data01[t_start:t_end], color = "blue")
-        axes[1, 0].plot(t_data01[t_start:t_end], burst_hf_data[t_start:t_end], color = "orange")
-        axes[2, 0].plot(t_data01[t_start:t_end], hpf_data01[t_start:t_end], color = "blue")
-        axes[2, 0].plot(t_data01[t_start:t_end], non_burst_hf_data[t_start:t_end], color = "orange")
+        axes[1, 0].plot(t_data01[t_start:t_end], burst_lpf_data[t_start:t_end], color = "blue")
+        axes[1, 0].plot(t_data01[t_start:t_end], bpf_data01[t_start:t_end], color = "orange")
+        axes[2, 0].plot(t_data01[t_start:t_end], non_burst_lpf_data[t_start:t_end], color = "blue")
+        axes[2, 0].plot(t_data01[t_start:t_end], bpf_data01[t_start:t_end], color = "orange")
+        axes[3, 0].plot(t_data01[t_start:t_end], hpf_data01[t_start:t_end], color = "blue")
+        axes[3, 0].plot(t_data01[t_start:t_end], burst_hf_data[t_start:t_end], color = "orange")
+        axes[4, 0].plot(t_data01[t_start:t_end], hpf_data01[t_start:t_end], color = "blue")
+        axes[4, 0].plot(t_data01[t_start:t_end], non_burst_hf_data[t_start:t_end], color = "orange")
         
-        vmax = np.max([np.max(burst_hf_data_psd[start_bin:end_bin]), np.max(non_burst_hf_data_psd[start_bin:end_bin])]) 
+        vmax_hf = np.max([np.max(burst_hf_data_psd[start_bin:end_bin]), np.max(non_burst_hf_data_psd[start_bin:end_bin])])
+        vmax_lf = np.max([np.max(burst_lpf_psd[start_bin:end_bin]), np.max(non_burst_lpf_psd[start_bin:end_bin])]) 
         axes[0, 1].plot(bins[start_bin:end_bin], lpf_psd[start_bin:end_bin], color = "black")
         axes[0, 1].plot(bins[start_bin:end_bin], bpf_psd[start_bin:end_bin], color = "blue")
-        axes[1, 1].plot(bins[start_bin:end_bin], raw_hf_data_psd[start_bin:end_bin], color = "black")
-        axes[1, 1].plot(bins[start_bin:end_bin], burst_hf_data_psd[start_bin:end_bin], color = "blue")
-        axes[2, 1].plot(bins[start_bin:end_bin], raw_hf_data_psd[start_bin:end_bin], color = "black")
-        axes[2, 1].plot(bins[start_bin:end_bin], non_burst_hf_data_psd[start_bin:end_bin], color = "blue")
+        axes[1, 1].plot(bins[start_bin:end_bin], lpf_psd[start_bin:end_bin], color = "black")
+        axes[1, 1].plot(bins[start_bin:end_bin], burst_lpf_psd[start_bin:end_bin], color = "blue")
+        axes[2, 1].plot(bins[start_bin:end_bin], lpf_psd[start_bin:end_bin], color = "black")
+        axes[2, 1].plot(bins[start_bin:end_bin], non_burst_lpf_psd[start_bin:end_bin], color = "blue")
+        axes[3, 1].plot(bins[start_bin:end_bin], raw_hf_data_psd[start_bin:end_bin], color = "black")
+        axes[3, 1].plot(bins[start_bin:end_bin], burst_hf_data_psd[start_bin:end_bin], color = "blue")
+        axes[4, 1].plot(bins[start_bin:end_bin], raw_hf_data_psd[start_bin:end_bin], color = "black")
+        axes[4, 1].plot(bins[start_bin:end_bin], non_burst_hf_data_psd[start_bin:end_bin], color = "blue")
         
         axes[0, 0].set_title("default")
         axes[1, 0].set_title("burst")
         axes[2, 0].set_title("non burst")
+        axes[3, 0].set_title("burst")
+        axes[4, 0].set_title("non burst")
         axes[0, 1].set_title("default %1.2f" % (lf_tremor_strength,))
-        axes[1, 1].set_title("burst %1.2f of %1.2f" % (burst_tremor_strength, hf_tremor_strength))
-        axes[2, 1].set_title("non burst %1.2f of %1.2f" % (non_burst_tremor_strength, hf_tremor_strength))
+        axes[1, 1].set_title("burst %1.2f" % (burst_lf_tremor_strength,))
+        axes[2, 1].set_title("non burst %1.2f" % (non_burst_lf_tremor_strength,))
+        axes[3, 1].set_title("burst %1.2f of %1.2f" % (burst_tremor_strength, hf_tremor_strength))
+        axes[4, 1].set_title("non burst %1.2f of %1.2f" % (non_burst_tremor_strength, hf_tremor_strength))
         
-        axes[1, 1].set_yticks([0, vmax])
-        axes[2, 1].set_yticks([0, vmax])
+        axes[1, 1].set_yticks([0, vmax_lf])
+        axes[2, 1].set_yticks([0, vmax_lf])
+        axes[3, 1].set_yticks([0, vmax_hf])
+        axes[4, 1].set_yticks([0, vmax_hf])
         
         axes[0, 1].set_xticks(np.arange(f_min, f_max, 2))
         axes[1, 1].set_xticks(np.arange(f_min, f_max, 2))
         axes[2, 1].set_xticks(np.arange(f_min, f_max, 2))
+        axes[3, 1].set_xticks(np.arange(f_min, f_max, 2))
+        axes[4, 1].set_xticks(np.arange(f_min, f_max, 2))
         axes[0, 1].set_xticklabels(axes[0, 1].get_xticks(), rotation = 45)
         axes[1, 1].set_xticklabels(axes[1, 1].get_xticks(), rotation = 45)
         axes[2, 1].set_xticklabels(axes[2, 1].get_xticks(), rotation = 45)
+        axes[3, 1].set_xticklabels(axes[3, 1].get_xticks(), rotation = 45)
+        axes[4, 1].set_xticklabels(axes[4, 1].get_xticks(), rotation = 45)
         
         fig.set_tight_layout(tight = True)
         fig.savefig(outpath + "img/1/" + file + image_format)
         plt.close()
             
-    return (lf_tremor_strength, hf_tremor_strength, burst_tremor_strength, non_burst_tremor_strength)
+    return (lf_tremor_strength, burst_lf_tremor_strength, non_burst_lf_tremor_strength, hf_tremor_strength, burst_tremor_strength, non_burst_tremor_strength)
 
 def plot_hf_lf_components_acc(data, fs_data01, data_acc, fs_acc, lf_min_f, lf_max_f, hf_min_f, hf_max_f, f_min = 2, f_max = 12, peak_spread = 1.5, peak_thresh = 1.1, 
                           visualize = True, outpath = None, file = None, overwrite = True):
@@ -294,6 +338,8 @@ def plot_hf_lf_components_acc(data, fs_data01, data_acc, fs_acc, lf_min_f, lf_ma
             
     return (lf_tremor_strength, hf_tremor_strength, burst_tremor_strength, non_burst_tremor_strength)
 
+import pandas
+
 def calculate_dmi(data, fs_data01, peak_spread, peak_thresh, f_min, f_max,
                   visualize = True, outpath = None, file = None, overwrite = True):
     if (overwrite or os.path.exists(outpath + "data/2/" + file + ".pkl") == False):
@@ -308,6 +354,9 @@ def calculate_dmi(data, fs_data01, peak_spread, peak_thresh, f_min, f_max,
         ### START
         binarized_data = methods.detection.bursts.identify_peaks(np.copy(high_freq_component), fs_data01, 300, None, peak_spread, peak_thresh, "negative", "auto")
         random_data = np.random.normal(loc = 0, scale = np.mean(np.abs(high_freq_component[np.argwhere(binarized_data == -1).squeeze()])), size = high_freq_component.shape[0])
+        
+        burst_hf_data2 = np.copy(random_data)
+        burst_hf_data2[np.argwhere(binarized_data == 1).squeeze()] = high_freq_component[np.argwhere(binarized_data == 1).squeeze()]
         non_burst_hf_data2 = np.copy(random_data)
         non_burst_hf_data2[np.argwhere(binarized_data == -1).squeeze()] = high_freq_component[np.argwhere(binarized_data == -1).squeeze()]
         
@@ -315,30 +364,59 @@ def calculate_dmi(data, fs_data01, peak_spread, peak_thresh, f_min, f_max,
         pre_peak_data[pre_peak_data > 0] = 0
         (peaks, _) = scipy.signal.find_peaks(np.abs(pre_peak_data), height = peak_thresh, distance = int(fs_data01/300))
         
-        non_burst_hf_data3 = np.copy(random_data)
+        burst_hf_data3 = np.zeros(random_data.shape)#np.copy(random_data)
+        non_burst_hf_data3 = np.zeros(random_data.shape)# np.copy(random_data)
         for peak in peaks:
-            if (np.abs(non_burst_hf_data2[peak]) < peak_thresh):
-                continue
-            
             start = int(peak - 10)
             end = int(peak + 20)
             
-            non_burst_hf_data2[start:end] = random_data[start:end]
-            non_burst_hf_data3[start:end] = high_freq_component[start:end]
+            if (np.abs(non_burst_hf_data2[peak]) < peak_thresh):
+                pass
+            else:
+                non_burst_hf_data2[start:end] = random_data[start:end]
+                non_burst_hf_data3[int((end + start)/2)] = -1
+            if (np.abs(burst_hf_data2[peak]) < peak_thresh):
+                pass
+            else:
+                burst_hf_data2[start:end] = random_data[start:end]
+                burst_hf_data3[int((end + start)/2)] = -1
         
-        non_burst_hf_data2 = np.abs(scipy.signal.hilbert(non_burst_hf_data2))
-        non_burst_hf_data3 = np.abs(scipy.signal.hilbert(non_burst_hf_data3))
+        burst_hf_data2_valid = ((burst_hf_data2 == 0).all() == False)
+        burst_hf_data3_valid = ((burst_hf_data3 == 0).all() == False)
+        non_burst_hf_data2_valid = ((non_burst_hf_data2 == 0).all() == False)
+        non_burst_hf_data3_valid = ((non_burst_hf_data3 == 0).all() == False)
+        
+        burst_hf_data2 = np.abs(np.asarray(pandas.Series(burst_hf_data2).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(burst_hf_data2))
+        burst_hf_data3 = np.abs(np.asarray(pandas.Series(burst_hf_data3).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(burst_hf_data3))
+        non_burst_hf_data2 = np.abs(np.asarray(pandas.Series(non_burst_hf_data2).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(non_burst_hf_data2))
+        non_burst_hf_data3 = np.abs(np.asarray(pandas.Series(non_burst_hf_data3).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(non_burst_hf_data3))
         
         ### END
         
         (score_default, best_fit_default, amp_signal_default) = pac.run_dmi(low_freq_component, high_freq_component, 10, 1)
         (score_burst, best_fit_burst, amp_signal_burst) = pac.run_dmi(low_freq_component, burst_hf_data, 10, 1)
+        if (burst_hf_data2_valid):
+            (score_burst2, best_fit_burst2, amp_signal_burst2) = pac.run_dmi(low_freq_component, burst_hf_data2, 10, 1)
+        else:
+            (score_burst2, best_fit_burst2, amp_signal_burst2) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape)) 
+        if (burst_hf_data3_valid):
+            (score_burst3, best_fit_burst3, amp_signal_burst3) = pac.run_dmi(low_freq_component, burst_hf_data3, 10, 1)
+        else:
+            (score_burst3, best_fit_burst3, amp_signal_burst3) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape)) 
         (score_non_burst, best_fit_non_burst, amp_signal_non_burst) = pac.run_dmi(low_freq_component, non_burst_hf_data, 10, 1)
-        (score_non_burst2, best_fit_non_burst2, amp_signal_non_burst2) = pac.run_dmi(low_freq_component, non_burst_hf_data2, 10, 1)
-        (score_non_burst3, best_fit_non_burst3, amp_signal_non_burst3) = pac.run_dmi(low_freq_component, non_burst_hf_data3, 10, 1)
+        if(non_burst_hf_data2_valid):
+            (score_non_burst2, best_fit_non_burst2, amp_signal_non_burst2) = pac.run_dmi(low_freq_component, non_burst_hf_data2, 10, 1)
+        else:
+            (score_non_burst2, best_fit_non_burst2, amp_signal_non_burst2) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape))
+        if(non_burst_hf_data3_valid):
+            (score_non_burst3, best_fit_non_burst3, amp_signal_non_burst3) = pac.run_dmi(low_freq_component, non_burst_hf_data3, 10, 1)
+        else:
+            (score_non_burst3, best_fit_non_burst3, amp_signal_non_burst3) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape))
         
         pickle.dump([best_fit_default, amp_signal_default, score_default,
                      best_fit_burst, amp_signal_burst, score_burst,
+                     best_fit_burst2, amp_signal_burst2, score_burst2,
+                     best_fit_burst3, amp_signal_burst3, score_burst3,
                      best_fit_non_burst, amp_signal_non_burst, score_non_burst, 
                      best_fit_non_burst2, amp_signal_non_burst2, score_non_burst2, 
                      best_fit_non_burst3, amp_signal_non_burst3, score_non_burst3], open(outpath + "data/2/" + file + ".pkl", "wb"))
@@ -856,20 +934,6 @@ def normalize_data(data, min_val, max_val, radius = 3):
     return data
 
 def count_bursts(data, fs, peak_spread, peak_thresh, outpath, file):
-    #-------------------------------------- data = ff.fir(data, 70, None, 1, fs)
-    #-------------------------------------- data = ff.fir(data, 135, 125, 1, fs)
-    #-------------------------------------- data = ff.fir(data, 205, 195, 1, fs)
-    #-------------------------------------- data = ff.fir(data, 405, 395, 1, fs)
-    
-    #------------------------------------- data = ff.fir(data, 300, None, 1, fs)
-    #------------------------------------------------------ data = np.copy(data)
-    #-------------------------------------------------------- data[data > 0] = 0
-#------------------------------------------------------------------------------ 
-    #-- (peaks, _) = scipy.signal.find_peaks(np.abs(data), height = peak_thresh)
-    #------------------------------------------ peak_data = np.zeros(data.shape)
-    #------------------------------------------------------ peak_data[peaks] = 1
-    # binarized_data = methods.detection.bursts.identify_peaks(ff.fir(np.copy(np.asarray(data)), 300, None, 1, fs), fs, 70, None, peak_spread, peak_thresh)
-    
     in_data = ff.fir(np.copy(data), 300, None, 1, fs)
     in_data[in_data > 0] = 0
     
@@ -881,12 +945,18 @@ def count_bursts(data, fs, peak_spread, peak_thresh, outpath, file):
     burst_data = peak_data[np.argwhere(binarized_data == 1).squeeze()]
     non_burst_data = peak_data[np.argwhere(binarized_data == -1).squeeze()]
     
-    burst_spikes_percentage = np.sum(burst_data) / np.sum(peak_data) if (len(peak_data) != 0) else -1
-    non_burst_spikes_percentage = np.sum(non_burst_data) / np.sum(peak_data) if (len(peak_data) != 0) else -1
+    burst_spikes_percentage = np.sum(burst_data) / np.sum(peak_data)
+    non_burst_spikes_percentage = np.sum(non_burst_data) / np.sum(peak_data)
     
-    spikes_per_second = np.sum(peak_data) / len(peak_data) * fs if (len(peak_data) != 0) else -1
-    burst_spikes_per_second = np.sum(burst_data)/len(burst_data) * fs if (len(burst_data) != 0) else -1
-    non_burst_spikes_per_second = np.sum(non_burst_data)/len(non_burst_data) * fs if (len(non_burst_data) != 0) else -1
+    spikes_per_second = np.sum(peak_data) / len(peak_data) * fs
+    burst_spikes_per_second = np.sum(burst_data)/len(burst_data) * fs
+    non_burst_spikes_per_second = np.sum(non_burst_data)/len(non_burst_data)
+    
+    burst_spikes_percentage = float(burst_spikes_percentage)
+    non_burst_spikes_percentage = float(non_burst_spikes_percentage)
+    burst_spikes_per_second = float(burst_spikes_per_second) if (np.isnan(burst_spikes_per_second) == False) else -1
+    non_burst_spikes_per_second = float(non_burst_spikes_per_second) if (np.isnan(non_burst_spikes_per_second) == False) else -1
+    spikes_per_second = float(spikes_per_second)
     
     pickle.dump((burst_spikes_percentage, non_burst_spikes_percentage, burst_spikes_per_second, non_burst_spikes_per_second, spikes_per_second), open(outpath + "data/7/" + file + ".pkl", "wb"))
     print((burst_spikes_percentage, non_burst_spikes_percentage, burst_spikes_per_second, non_burst_spikes_per_second, spikes_per_second))
@@ -1036,8 +1106,10 @@ def main(mode = "power", overwrite = False, visualize = False):
         if (file == ""):
             continue
             
-        if (file != "639-2376" and file != "655-996-NOT-TREMOR"):
-            continue
+        #=======================================================================
+        # if (file != "639-2376" and file != "655-996-NOT-TREMOR"):
+        #     continue
+        #=======================================================================
         
         if (meta_data["valid_data"][file_idx] == 0):
             continue
@@ -1066,9 +1138,11 @@ def main(mode = "power", overwrite = False, visualize = False):
             tremor_values = plot_hf_lf_components(loc_data, fs_data01, lf_f_min, lf_f_max, hf_f_min, hf_f_max, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx], outpath = out_path, file = file,
                                                 overwrite = overwrite, visualize = visualize)
             meta_data["tremor lfp strength 1"][file_idx] = float(tremor_values[0])
-            meta_data["tremor overall strength 1"][file_idx] = float(tremor_values[1])
-            meta_data["tremor burst strength 1"][file_idx] = float(tremor_values[2])
-            meta_data["tremor non burst strength 1"][file_idx] = float(tremor_values[3])
+            meta_data["tremor burst lfp strength 1"][file_idx] = float(tremor_values[1])
+            meta_data["tremor non burst lfp strength 1"][file_idx] = float(tremor_values[2])
+            meta_data["tremor overall strength 1"][file_idx] = float(tremor_values[3])
+            meta_data["tremor burst strength 1"][file_idx] = float(tremor_values[4])
+            meta_data["tremor non burst strength 1"][file_idx] = float(tremor_values[5])
                         
         if ("overall pac" in mode):
             pac_values = calculate_dmi(loc_data, fs_data01, peak_spread = meta_data["peak_spread"][file_idx], peak_thresh = meta_data["peak_thresh"][file_idx],
@@ -1217,7 +1291,7 @@ def main(mode = "power", overwrite = False, visualize = False):
 #main(["power", "overall pac", "specific pac", "acc pac"], overwrite = False, visualize = True)
 
 #main(["power"], overwrite = True, visualize = True)
-#main(["overall pac"], overwrite = True, visualize = True)
+main(["overall pac"], overwrite = True, visualize = True)
 #main(["specific pac"], overwrite = True, visualize = True)
 #main(["cnt_burst"], overwrite = True, visualize = False)
 #main(["dac"], overwrite = False, visualize = True)
@@ -1225,7 +1299,7 @@ def main(mode = "power", overwrite = False, visualize = False):
 
 
 
-main(["plot"], overwrite = False, visualize = True)
+#main(["power"], overwrite = True, visualize = True)
 
 
 

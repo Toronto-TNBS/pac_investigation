@@ -42,6 +42,9 @@ def main():
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
             
+            if (pre_data[row_idx, 0] == "2962-s2-215-c2b-tremor"):
+                continue
+            
             if (float(pre_data[row_idx, spikes]) < 10 or float(pre_data[row_idx, spikes]) > 90):
                 continue
             

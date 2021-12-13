@@ -21,7 +21,7 @@ import finn.statistical.glmm as glmm
 import lmfit
 
 def get_values(path, subpath, mode, tremor_type):
-    meta_data = methods.data_io.ods.ods_data("/mnt/data/Professional/UHN/pac_investigation/data/meta.ods")
+    meta_data = methods.data_io.ods.ods_data("/mnt/data/Professional/UHN/projects/old/pac_investigation/data/meta.ods")
     meta_info = meta_data.get_sheet_as_dict(mode)
     meta_info["file"]
     
@@ -36,8 +36,8 @@ def get_values(path, subpath, mode, tremor_type):
     patients = list()
     trials = list()
     
-    #directionality = np.load("/mnt/data/Professional/UHN/pac_investigation/code/beta_pac/analysis/beta/test.npy")
-    directionality = np.load("/mnt/data/Professional/UHN/pac_investigation/code/beta_pac/analysis/tremor/dac.npy")
+    #directionality = np.load("/mnt/data/Professional/UHN/projects/old/pac_investigation/code/beta_pac/analysis/beta/test.npy")
+    directionality = np.load("/mnt/data/Professional/UHN/projects/old/pac_investigation/code/beta_pac/analysis/tremor/dac.npy")
     dir_names = directionality[:, -1].tolist()
     
     for (f_idx, f_name) in enumerate(meta_info["file"]):
@@ -59,17 +59,17 @@ def get_values(path, subpath, mode, tremor_type):
         
         offset = 0#6
         
-        loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[4])), np.argmin(np.abs(data[7+offset])))
+        loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[4])), np.argmin(np.abs(data[13])))
         curr_dir = directionality[dir_names.index(f_name), [1, 2]]
-        pac_scores.append([data[2], data[5], data[8+offset]])
+        pac_scores.append([data[2], data[5], data[14]])
         
 #        loc_data = (np.argmax(data[0]), np.argmax(data[3]), np.argmax(data[6]))
         phase_shifts.append(loc_data)
         patients.append(meta_info["patient_id"][f_idx])
         trials.append(meta_info["trial"][f_idx])
-        data_list.append([data[1], data[4], data[7+offset]])
-        sin_fit_list.append([data[0], data[3], data[6+offset]])
-        fit_list0.append(data[1]); fit_list1.append(data[4]); fit_list2.append(data[7+offset])
+        data_list.append([data[1], data[4], data[13]])
+        sin_fit_list.append([data[0], data[3], data[12]])
+        fit_list0.append(data[1]); fit_list1.append(data[4]); fit_list2.append(data[13])
         dir_list.append(curr_dir)
         f_names.append(f_name)
         
@@ -145,13 +145,15 @@ def main(path, subpath, mode, tremor_type, axes, axes2, dir_type, dir_thresh, id
     amplitude_signal = np.mean(loc_burst_data, axis = 0)
     params = lmfit.Parameters()
     params.add("phase", value = 0, min = -180, max = 180, vary = True)
-    params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
+    #params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
+    params.add("amp", value = 0.5, min = .9, max = 1.1, vary = True)
     model = lmfit.Model(__sine, nan_policy = "omit")
     result1 = model.fit(amplitude_signal, x = np.arange(0, 1, 1/len(amplitude_signal)), params = params, max_nfev = 300)
     amplitude_signal = np.mean(loc_non_burst_data, axis = 0)
     params = lmfit.Parameters()
     params.add("phase", value = 0, min = -180, max = 180, vary = True)
-    params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
+    #params.add("amp", value = 0.5, min = np.max(np.abs(amplitude_signal))*.9, max = np.max(np.abs(amplitude_signal))*1.1, vary = True)
+    params.add("amp", value = 0.5, min = .9, max = 1.1, vary = True)
     model = lmfit.Model(__sine, nan_policy = "omit")
     result2 = model.fit(amplitude_signal, x = np.arange(0, 1, 1/len(amplitude_signal)), params = params, max_nfev = 300)
     
@@ -235,16 +237,16 @@ dir_thresh = 0.0
 (fig3, axes3) = plt.subplots(2, 2)
 (fig4, axes4) = plt.subplots(2, 2)
 
-(data1, data2, loc_burst_fit)   = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "tremor", "hf tremor",
+(data1, data2, loc_burst_fit)   = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf tremor",
                                        axes[0, :], axes2[0, :], dir_type, dir_thresh)
-(data3, data4, _)               = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor",
+(data3, data4, _)               = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor",
                                        axes[1, :], axes2[1, :], dir_type, dir_thresh, loc_burst_fit)
 
 dir_type = 1
 dir_thresh = 0.0
-(data5, data6, _)                = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "tremor", "hf tremor",
+(data5, data6, _)                = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf tremor",
                                        axes3[0, :], axes4[0, :], dir_type, dir_thresh, loc_burst_fit)
-(data7, data8, _)                = main("/mnt/data/Professional/UHN/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor",
+(data7, data8, _)                = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor",
                                        axes3[1, :], axes4[1, :], dir_type, dir_thresh, loc_burst_fit)
 
 
