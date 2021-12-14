@@ -355,71 +355,76 @@ def calculate_dmi(data, fs_data01, peak_spread, peak_thresh, f_min, f_max,
         binarized_data = methods.detection.bursts.identify_peaks(np.copy(high_freq_component), fs_data01, 300, None, peak_spread, peak_thresh, "negative", "auto")
         random_data = np.random.normal(loc = 0, scale = np.mean(np.abs(high_freq_component[np.argwhere(binarized_data == -1).squeeze()])), size = high_freq_component.shape[0])
         
-        burst_hf_data2 = np.copy(random_data)
-        burst_hf_data2[np.argwhere(binarized_data == 1).squeeze()] = high_freq_component[np.argwhere(binarized_data == 1).squeeze()]
-        non_burst_hf_data2 = np.copy(random_data)
-        non_burst_hf_data2[np.argwhere(binarized_data == -1).squeeze()] = high_freq_component[np.argwhere(binarized_data == -1).squeeze()]
+        burst_hfo_data = np.copy(random_data)
+        burst_hfo_data[np.argwhere(binarized_data == 1).squeeze()] = high_freq_component[np.argwhere(binarized_data == 1).squeeze()]
+        non_burst_hfo_data = np.copy(random_data)
+        non_burst_hfo_data[np.argwhere(binarized_data == -1).squeeze()] = high_freq_component[np.argwhere(binarized_data == -1).squeeze()]
         
         pre_peak_data = ff.fir(np.copy(high_freq_component), 300, None, 1, fs_data01)
         pre_peak_data[pre_peak_data > 0] = 0
         (peaks, _) = scipy.signal.find_peaks(np.abs(pre_peak_data), height = peak_thresh, distance = int(fs_data01/300))
         
-        burst_hf_data3 = np.zeros(random_data.shape)#np.copy(random_data)
-        non_burst_hf_data3 = np.zeros(random_data.shape)# np.copy(random_data)
+        hfo_data = np.copy(high_freq_component)
+        burst_spike_data = np.zeros(random_data.shape)#np.copy(random_data)
+        non_burst_spike_data = np.zeros(random_data.shape)# np.copy(random_data)
+        
         for peak in peaks:
             start = int(peak - 10)
             end = int(peak + 20)
             
-            if (np.abs(non_burst_hf_data2[peak]) < peak_thresh):
+            if (np.abs(non_burst_hfo_data[peak]) < peak_thresh):
                 pass
             else:
-                non_burst_hf_data2[start:end] = random_data[start:end]
-                non_burst_hf_data3[int((end + start)/2)] = -1
-            if (np.abs(burst_hf_data2[peak]) < peak_thresh):
+                non_burst_hfo_data[start:end] = random_data[start:end]
+                non_burst_spike_data[int((end + start)/2)] = -1
+            if (np.abs(burst_hfo_data[peak]) < peak_thresh):
                 pass
             else:
-                burst_hf_data2[start:end] = random_data[start:end]
-                burst_hf_data3[int((end + start)/2)] = -1
+                burst_hfo_data[start:end] = random_data[start:end]
+                burst_spike_data[int((end + start)/2)] = -1
+            hfo_data[start:end] = random_data[start:end]
         
-        burst_hf_data2_valid = ((burst_hf_data2 == 0).all() == False)
-        burst_hf_data3_valid = ((burst_hf_data3 == 0).all() == False)
-        non_burst_hf_data2_valid = ((non_burst_hf_data2 == 0).all() == False)
-        non_burst_hf_data3_valid = ((non_burst_hf_data3 == 0).all() == False)
+        burst_hfo_data_valid = ((burst_hfo_data == 0).all() == False)
+        burst_spike_data_valid = ((burst_spike_data == 0).all() == False)
+        non_burst_hfo_data_valid = ((non_burst_hfo_data == 0).all() == False)
+        non_burst_spike_data_valid = ((non_burst_spike_data == 0).all() == False)
         
-        burst_hf_data2 = np.abs(np.asarray(pandas.Series(burst_hf_data2).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(burst_hf_data2))
-        burst_hf_data3 = np.abs(np.asarray(pandas.Series(burst_hf_data3).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(burst_hf_data3))
-        non_burst_hf_data2 = np.abs(np.asarray(pandas.Series(non_burst_hf_data2).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(non_burst_hf_data2))
-        non_burst_hf_data3 = np.abs(np.asarray(pandas.Series(non_burst_hf_data3).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(non_burst_hf_data3))
+        burst_hfo_data = np.abs(np.asarray(pandas.Series(burst_hfo_data).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(burst_hfo_data))
+        burst_spike_data = np.abs(np.asarray(pandas.Series(burst_spike_data).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(burst_spike_data))
+        non_burst_hfo_data = np.abs(np.asarray(pandas.Series(non_burst_hfo_data).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(non_burst_hfo_data))
+        non_burst_spike_data = np.abs(np.asarray(pandas.Series(non_burst_spike_data).rolling(center = True, window = int(fs_data01/10)).mean()))#np.abs(scipy.signal.hilbert(non_burst_spike_data))
         
         ### END
         
         (score_default, best_fit_default, amp_signal_default) = pac.run_dmi(low_freq_component, high_freq_component, 10, 1)
+        (score_hfo, best_fit_hfo, amp_signal_hfo) = pac.run_dmi(low_freq_component, hfo_data, 10, 1)
         (score_burst, best_fit_burst, amp_signal_burst) = pac.run_dmi(low_freq_component, burst_hf_data, 10, 1)
-        if (burst_hf_data2_valid):
-            (score_burst2, best_fit_burst2, amp_signal_burst2) = pac.run_dmi(low_freq_component, burst_hf_data2, 10, 1)
+        if (burst_hfo_data_valid):
+            (score_burst_hfo, best_fit_burst_hfo, amp_signal_burst_hfo) = pac.run_dmi(low_freq_component, burst_hfo_data, 10, 1)
         else:
-            (score_burst2, best_fit_burst2, amp_signal_burst2) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape)) 
-        if (burst_hf_data3_valid):
-            (score_burst3, best_fit_burst3, amp_signal_burst3) = pac.run_dmi(low_freq_component, burst_hf_data3, 10, 1)
+            (score_burst_hfo, best_fit_burst_hfo, amp_signal_burst_hfo) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape)) 
+        if (burst_spike_data_valid):
+            (score_burst_spike, best_fit_burst_spike, amp_signal_burst_spike) = pac.run_dmi(low_freq_component, burst_spike_data, 10, 1)
         else:
-            (score_burst3, best_fit_burst3, amp_signal_burst3) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape)) 
+            (score_burst_spike, best_fit_burst_spike, amp_signal_burst_spike) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape)) 
         (score_non_burst, best_fit_non_burst, amp_signal_non_burst) = pac.run_dmi(low_freq_component, non_burst_hf_data, 10, 1)
-        if(non_burst_hf_data2_valid):
-            (score_non_burst2, best_fit_non_burst2, amp_signal_non_burst2) = pac.run_dmi(low_freq_component, non_burst_hf_data2, 10, 1)
+        if(non_burst_hfo_data_valid):
+            (score_non_burst_hfo, best_fit_non_burst_hfo, amp_signal_non_burst_hfo) = pac.run_dmi(low_freq_component, non_burst_hfo_data, 10, 1)
         else:
-            (score_non_burst2, best_fit_non_burst2, amp_signal_non_burst2) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape))
-        if(non_burst_hf_data3_valid):
-            (score_non_burst3, best_fit_non_burst3, amp_signal_non_burst3) = pac.run_dmi(low_freq_component, non_burst_hf_data3, 10, 1)
+            (score_non_burst_hfo, best_fit_non_burst_hfo, amp_signal_non_burst_hfo) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape))
+        if(non_burst_spike_data_valid):
+            (score_non_burst_spike, best_fit_non_burst_spike, amp_signal_non_burst_spike) = pac.run_dmi(low_freq_component, non_burst_spike_data, 10, 1)
         else:
-            (score_non_burst3, best_fit_non_burst3, amp_signal_non_burst3) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape))
+            (score_non_burst_spike, best_fit_non_burst_spike, amp_signal_non_burst_spike) = (0, np.zeros(best_fit_default.shape), np.zeros(amp_signal_default.shape))
         
         pickle.dump([best_fit_default, amp_signal_default, score_default,
+                     best_fit_hfo, amp_signal_hfo, score_hfo,
                      best_fit_burst, amp_signal_burst, score_burst,
-                     best_fit_burst2, amp_signal_burst2, score_burst2,
-                     best_fit_burst3, amp_signal_burst3, score_burst3,
+                     best_fit_burst_hfo, amp_signal_burst_hfo, score_burst_hfo,
+                     best_fit_burst_spike, amp_signal_burst_spike, score_burst_spike,
                      best_fit_non_burst, amp_signal_non_burst, score_non_burst, 
-                     best_fit_non_burst2, amp_signal_non_burst2, score_non_burst2, 
-                     best_fit_non_burst3, amp_signal_non_burst3, score_non_burst3], open(outpath + "data/2/" + file + ".pkl", "wb"))
+                     best_fit_non_burst_hfo, amp_signal_non_burst_hfo, score_non_burst_hfo, 
+                     best_fit_non_burst_spike, amp_signal_non_burst_spike, score_non_burst_spike], open(outpath + "data/2/" + file + ".pkl", "wb"))
         
     else:
         

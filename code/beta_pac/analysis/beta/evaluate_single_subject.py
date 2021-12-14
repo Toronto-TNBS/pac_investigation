@@ -224,8 +224,7 @@ def calculate_pac(data, fs_data01, peak_spread, peak_thresh,
         hfo_data = np.copy(high_freq_component)
         burst_spike_data = np.zeros(random_data.shape)
         non_burst_spike_data = np.zeros(random_data.shape)
-        
-        #non_burst_spike_data = np.copy(random_data)
+
         for peak in peaks:
             start = int(peak - 10)
             end = int(peak + 20)
@@ -1228,6 +1227,9 @@ def main(mode = "power", overwrite = False, visualize = False):
         #------------ if (file != "2622_s1_922-BETA" and file != "2623-s3-666"):
             #---------------------------------------------------------- continue
         
+        if (file != "2760_s2_310b-BETA-in-and-out" and file != "2559_s2_664-BETA"):
+            continue
+        
         if (int(meta_data["valid_data"][file_idx]) == 0 or int(meta_data["process data"][file_idx]) == 0):
             continue
         
@@ -1353,7 +1355,16 @@ def main(mode = "power", overwrite = False, visualize = False):
                                    outpath = out_path, file = file,
                                    overwrite = overwrite, visualize = visualize)
             
-        if ("dac" in mode):
+        if ("dac_spike" in mode):
+            tmp = get_dac(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]),
+                       lf_f_min = float(meta_data["lf f min"][file_idx]), lf_f_max = float(meta_data["lf f max"][file_idx]),
+                       hf_f_min = float(meta_data["hf f min"][file_idx]), hf_f_max = float(meta_data["hf f max"][file_idx]),
+                       outpath = out_path, file = file,
+                       overwrite = overwrite, visualize = visualize)
+            if (tmp is not None):
+                dac_data.append([tmp[0], tmp[1], tmp[2], meta_data["lf auto"][file_idx], meta_data["hf auto"][file_idx], file])
+                
+        if ("dac_hfo" in mode):
             tmp = get_dac(loc_data, fs_data01, peak_spread = float(meta_data["peak_spread"][file_idx]), peak_thresh = float(meta_data["peak_thresh"][file_idx]),
                        lf_f_min = float(meta_data["lf f min"][file_idx]), lf_f_max = float(meta_data["lf f max"][file_idx]),
                        hf_f_min = float(meta_data["hf f min"][file_idx]), hf_f_max = float(meta_data["hf f max"][file_idx]),

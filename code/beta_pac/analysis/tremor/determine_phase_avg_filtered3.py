@@ -60,17 +60,15 @@ def get_values(path, subpath, mode, tremor_type):
         
         #print(f_name, data[2])
                 
-        loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[7])), np.argmin(np.abs(data[10])), np.argmin(np.abs(data[16])), np.argmin(np.abs(data[19])))
-        curr_dir = directionality[dir_names.index(f_name), [1, 2]]
-        pac_scores.append([data[2], data[8], data[11], data[17], data[20]])
-        
-#        loc_data = (np.argmax(data[0]), np.argmax(data[3]), np.argmax(data[6]))
+        loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[4])), np.argmin(np.abs(data[13])), np.argmin(np.abs(data[4])), np.argmin(np.abs(data[22])))
+        curr_dir = directionality[dir_names.index(f_name), [0, 1, 2]]
+        pac_scores.append([data[2], data[5], data[14], data[5], data[23]])
         phase_shifts.append(loc_data)
         patients.append(meta_info["patient_id"][f_idx])
         trials.append(meta_info["trial"][f_idx])
-        data_list.append([data[1], data[7], data[10], data[16], data[19]])
-        sin_fit_list.append([data[0], data[6], data[9], data[15], data[18]])
-        fit_list0.append(data[1]); fit_list1.append(data[7]); fit_list2.append(data[10]); fit_list3.append(data[16]); fit_list4.append(data[19])
+        data_list.append([data[1], data[4], data[13], data[4], data[22]])
+        sin_fit_list.append([data[0], data[3], data[12], data[3], data[21]])
+        fit_list0.append(data[1]); fit_list1.append(data[4]); fit_list2.append(data[13]); fit_list3.append(data[4]); fit_list4.append(data[22])
         dir_list.append(curr_dir)
         f_names.append(f_name)
         
@@ -288,111 +286,16 @@ stat_data_216 = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0],
  
 print(dir_type, dir_thresh)
 vals = list()  
-stats = glmm.run(stat_data_21, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_23, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_24, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_25, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_26, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_27, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_28, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_29, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_210, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_211, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_212, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_213, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_214, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_215, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
-stats = glmm.run(stat_data_216, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
-                 "gaussian")
-stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*15, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
+full_stat_data = [stat_data_24, stat_data_26, stat_data_28, stat_data_21, stat_data_25, stat_data_210, stat_data_212, stat_data_214, stat_data_216]
+
+for loc_data in full_stat_data:
+    stats = glmm.run(loc_data, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
+                     "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
+                     "gaussian")
+    stats = np.asarray(stats)
+    print(stats)
+    print(float(stats[2, 0])*len(full_stat_data), "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
+    vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
 
 plt.figure()
 plt.errorbar(np.arange(0, 15), np.asarray(vals)[:, 0], yerr = np.asarray(vals)[:, 1])

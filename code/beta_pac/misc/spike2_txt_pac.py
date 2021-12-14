@@ -379,9 +379,6 @@ def __mainInner(basePath, file, acc_channel, overwrite):
         
     plt.show(block = True)
     
-    print("Terminated successfully")
-    quit()
-    
     raw_data = [np.asarray(file.read(lazy=False)[0].segments[0].analogsignals[0])[:, 0]]
     
     if (len(file.read(lazy=True)[0].segments[0].analogsignals) == 1):
@@ -411,9 +408,9 @@ def __mainInner(basePath, file, acc_channel, overwrite):
     pickle.dump(data, open(filePath + ".txt_conv_data.pkl", "wb"))
 
 
-test()
-main("/mnt/data/Professional/UHN/pac_investigation/data/tremor/meta.ods",
-     "/mnt/data/Professional/UHN/pac_investigation/data/tremor/", 4, False)
+#test()
+main("/mnt/data/Professional/UHN/projects/old/pac_investigation/data/beta/meta.ods",
+     "/mnt/data/Professional/UHN/projects/old/pac_investigation/data/beta/", 4, False)
 print("Terminated successfully")
 
 

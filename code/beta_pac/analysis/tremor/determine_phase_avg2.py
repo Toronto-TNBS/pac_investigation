@@ -47,15 +47,15 @@ def get_values(path, subpath, mode, type):
         
         #print(f_name, data[2])
         
-        loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[4])), np.argmin(np.abs(data[13])))
+        loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[7])), np.argmin(np.abs(data[16])))
         
 #        loc_data = (np.argmax(data[0]), np.argmax(data[3]), np.argmax(data[6]))
         phase_shifts.append(loc_data)
         patients.append(meta_info["patient_id"][f_idx])
         trials.append(meta_info["trial"][f_idx])
-        data_list.append([data[1], data[4], data[13]])
-        sin_fit_list.append([data[0], data[3], data[10]])
-        fit_list0.append(data[1]); fit_list1.append(data[4]); fit_list2.append(data[13])
+        data_list.append([data[1], data[7], data[16]])
+        sin_fit_list.append([data[0], data[6], data[15]])
+        fit_list0.append(data[1]); fit_list1.append(data[7]); fit_list2.append(data[16])
 
     fit_list0 = np.asarray(fit_list0); fit_list1 = np.asarray(fit_list1); fit_list2 = np.asarray(fit_list2)
        
