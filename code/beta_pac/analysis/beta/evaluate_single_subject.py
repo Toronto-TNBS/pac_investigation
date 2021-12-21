@@ -1227,8 +1227,8 @@ def main(mode = "power", overwrite = False, visualize = False):
         #------------ if (file != "2622_s1_922-BETA" and file != "2623-s3-666"):
             #---------------------------------------------------------- continue
         
-        if (file != "2760_s2_310b-BETA-in-and-out" and file != "2559_s2_664-BETA"):
-            continue
+        # if (file != "2760_s2_310b-BETA-in-and-out" and file != "2559_s2_664-BETA"):
+            #---------------------------------------------------------- continue
         
         if (int(meta_data["valid_data"][file_idx]) == 0 or int(meta_data["process data"][file_idx]) == 0):
             continue

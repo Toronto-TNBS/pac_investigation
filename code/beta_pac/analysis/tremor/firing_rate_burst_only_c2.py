@@ -39,6 +39,10 @@ def main():
     for idx_list_idx in range(len(idx_lists_burst)):
         data.append(list())
         for row_idx in range(len(pre_data)):
+    
+            if (int(float(pre_data[row_idx, spikes_w])) == -1):
+                continue
+    
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
             

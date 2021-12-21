@@ -21,7 +21,7 @@ import os
 
 import methods.detection.bursts
 
-def main(mode = "tremor"):
+def main(mode = "beta"):
     meta = methods.data_io.ods.ods_data("../../../data/meta.ods")
     meta_data = meta.get_sheet_as_dict(mode)
     

@@ -93,6 +93,7 @@ def main(path, subpath, mode, tremor_type, axes, axes2, dir_type, dir_thresh, id
     patients1 = np.copy(patients); patients2 = np.copy(patients); patients3 = np.copy(patients); patients4 = np.copy(patients)
     trials1 = np.copy(trials); trials2 = np.copy(trials); trials3 = np.copy(trials); trials4 = np.copy(trials)
     f_names1 = np.copy(f_names); f_names2 = np.copy(f_names); f_names3 = np.copy(f_names); f_names4 = np.copy(f_names)
+    pac_scores1 = np.copy(pac_scores[:, 1]); pac_scores2 = np.copy(pac_scores[:, 2]); pac_scores3 = np.copy(pac_scores[:, 3]); pac_scores4 = np.copy(pac_scores[:, 4])
     
     loc_burst_data1 = data[:, 1, :]; loc_burst_fit1 = fit[:, 1, :]
     loc_burst_data2 = data[:, 2, :]; loc_burst_fit2 = fit[:, 2, :]
@@ -112,11 +113,9 @@ def main(path, subpath, mode, tremor_type, axes, axes2, dir_type, dir_thresh, id
     non_burst_dirs_idx_2 = np.argwhere(np.sign(non_burst_dirs[non_burst_dirs_idx_1]) == dir_type).squeeze()
     non_burst_dirs_idx = non_burst_dirs_idx_1[non_burst_dirs_idx_2]
     
-    loc_burst_data1 = loc_burst_data1[burst_dirs_idx, :]; patients1 = patients1[burst_dirs_idx]; trials1 = trials1[burst_dirs_idx]; loc_burst_fit1 = loc_burst_fit1[burst_dirs_idx, :]; f_names1 = f_names1[burst_dirs_idx] 
-    loc_burst_data2 = loc_burst_data2[burst_dirs_idx, :]; patients2 = patients2[burst_dirs_idx]; trials2 = trials2[burst_dirs_idx]; loc_burst_fit2 = loc_burst_fit2[burst_dirs_idx, :]; f_names2 = f_names2[burst_dirs_idx] 
-    loc_non_burst_data1 = loc_non_burst_data1[non_burst_dirs_idx, :]; patients3= patients3[non_burst_dirs_idx]; trials3 = trials3[non_burst_dirs_idx]; loc_non_burst_fit1 = loc_non_burst_fit1[non_burst_dirs_idx, :]; f_names3 = f_names3[non_burst_dirs_idx]
-    loc_non_burst_data2 = loc_non_burst_data2[non_burst_dirs_idx, :]; patients4 = patients4[non_burst_dirs_idx]; trials4 = trials4[non_burst_dirs_idx]; loc_non_burst_fit2 = loc_non_burst_fit2[non_burst_dirs_idx, :]; f_names4 = f_names4[non_burst_dirs_idx]
-    
+    loc_burst_data2 = loc_burst_data2[burst_dirs_idx, :]; patients2 = patients2[burst_dirs_idx]; trials2 = trials2[burst_dirs_idx]; loc_burst_fit2 = loc_burst_fit2[burst_dirs_idx, :]; f_names2 = f_names2[burst_dirs_idx]; pac_scores2 = pac_scores2[burst_dirs_idx]
+    loc_non_burst_data2 = loc_non_burst_data2[non_burst_dirs_idx, :]; patients4 = patients4[non_burst_dirs_idx]; trials4 = trials4[non_burst_dirs_idx]; loc_non_burst_fit2 = loc_non_burst_fit2[non_burst_dirs_idx, :]; f_names4 = f_names4[non_burst_dirs_idx]; pac_scores4 = pac_scores4[non_burst_dirs_idx]
+   
     loc_burst_data_m1 = np.mean(loc_burst_data1, axis = 0)
     loc_burst_data_v1 = np.sqrt(np.var(loc_burst_data1, axis = 0))
     loc_burst_data_m2 = np.mean(loc_burst_data2, axis = 0)
@@ -202,10 +201,16 @@ def main(path, subpath, mode, tremor_type, axes, axes2, dir_type, dir_thresh, id
     axes[1].set_ylim((-2.5, 2.5))
     axes[2].set_ylim((-2.5, 2.5))
     axes[3].set_ylim((-2.5, 2.5))
-    axes2[0].hist(np.argmax(loc_burst_fit1, axis = 1).squeeze(), 12, (0, 360))
-    axes2[1].hist(np.argmax(loc_burst_fit2, axis = 1).squeeze(), 12, (0, 360))
-    axes2[2].hist(np.argmax(loc_non_burst_fit1, axis = 1).squeeze(), 12, (0, 360))
-    axes2[3].hist(np.argmax(loc_non_burst_fit2, axis = 1).squeeze(), 12, (0, 360))
+    
+    hist1 = axes2[0].hist(np.argmax(loc_burst_fit1, axis = 1).squeeze(), 12, (0, 360))[0]
+    hist2 = axes2[1].hist(np.argmax(loc_burst_fit2, axis = 1).squeeze(), 12, (0, 360))[0]
+    hist3 = axes2[2].hist(np.argmax(loc_non_burst_fit1, axis = 1).squeeze(), 12, (0, 360))[0]
+    hist4 = axes2[3].hist(np.argmax(loc_non_burst_fit2, axis = 1).squeeze(), 12, (0, 360))[0]
+    
+    hist1 = np.argmax(loc_burst_fit1, axis = 1).squeeze()
+    hist2 = np.argmax(loc_burst_fit2, axis = 1).squeeze()
+    hist3 = np.argmax(loc_non_burst_fit1, axis = 1).squeeze()
+    hist4 = np.argmax(loc_non_burst_fit2, axis = 1).squeeze()
     
     if (ideal_ref_slope is None):
         ideal_ref_slope = np.mean(loc_burst_data2, axis = 0)
@@ -218,17 +223,28 @@ def main(path, subpath, mode, tremor_type, axes, axes2, dir_type, dir_thresh, id
     sq_error_3 = np.sum(np.power((loc_non_burst_data1 - ideal_ref_slope), 2), axis = 1)
     sq_error_4 = np.sum(np.power((loc_non_burst_data2 - ideal_ref_slope), 2), axis = 1)
     
+    sq_error_1 = np.sum(np.power((loc_burst_data1 - result1.best_fit), 2), axis = 1)
+    sq_error_2 = np.sum(np.power((loc_burst_data2 - result2.best_fit), 2), axis = 1)
+    sq_error_3 = np.sum(np.power((loc_non_burst_data1 - result3.best_fit), 2), axis = 1)
+    sq_error_4 = np.sum(np.power((loc_non_burst_data2 - result4.best_fit), 2), axis = 1)
+    
+    # sq_error_1 = np.sum(np.power((loc_burst_fit1 - result1.best_fit), 2), axis = 1)
+    # sq_error_2 = np.sum(np.power((loc_burst_fit2 - result2.best_fit), 2), axis = 1)
+    # sq_error_3 = np.sum(np.power((loc_non_burst_fit1 - result3.best_fit), 2), axis = 1)
+    # sq_error_4 = np.sum(np.power((loc_non_burst_fit2 - result4.best_fit), 2), axis = 1)
+    
     print("all", np.mean(values[:, 0]), np.sqrt(np.var(values[:, 0])))
     print("burst", np.mean(values[:, 1]), np.sqrt(np.var(values[:, 1])), np.mean(pac_scores1))
     print("burst", np.mean(values[:, 2]), np.sqrt(np.var(values[:, 2])), np.mean(pac_scores2))
     print("non burst", np.mean(values[:, 3]), np.sqrt(np.var(values[:, 3])), np.mean(pac_scores3))
     print("non burst", np.mean(values[:, 4]), np.sqrt(np.var(values[:, 4])), np.mean(pac_scores4))
     
-    return (np.concatenate((np.expand_dims(sq_error_1, axis = 1), np.expand_dims(patients1, axis = 1), np.expand_dims(trials1, axis = 1)), axis = 1),
-            np.concatenate((np.expand_dims(sq_error_2, axis = 1), np.expand_dims(patients2, axis = 1), np.expand_dims(trials2, axis = 1)), axis = 1), 
-            np.concatenate((np.expand_dims(sq_error_3, axis = 1), np.expand_dims(patients3, axis = 1), np.expand_dims(trials3, axis = 1)), axis = 1), 
-            np.concatenate((np.expand_dims(sq_error_4, axis = 1), np.expand_dims(patients4, axis = 1), np.expand_dims(trials4, axis = 1)), axis = 1), 
-            ideal_ref_slope)
+    return (np.concatenate((np.expand_dims(pac_scores1, axis = 1), np.expand_dims(sq_error_1, axis = 1), np.expand_dims(patients1, axis = 1), np.expand_dims(trials1, axis = 1)), axis = 1),
+            np.concatenate((np.expand_dims(pac_scores2, axis = 1), np.expand_dims(sq_error_2, axis = 1), np.expand_dims(patients2, axis = 1), np.expand_dims(trials2, axis = 1)), axis = 1), 
+            np.concatenate((np.expand_dims(pac_scores3, axis = 1), np.expand_dims(sq_error_3, axis = 1), np.expand_dims(patients3, axis = 1), np.expand_dims(trials3, axis = 1)), axis = 1), 
+            np.concatenate((np.expand_dims(pac_scores4, axis = 1), np.expand_dims(sq_error_4, axis = 1), np.expand_dims(patients4, axis = 1), np.expand_dims(trials4, axis = 1)), axis = 1), 
+            ideal_ref_slope, 
+            hist1, hist2, hist3, hist4)
 
 dir_type = -1
 dir_thresh = 0.0
@@ -238,16 +254,20 @@ dir_thresh = 0.0
 (fig3, axes3) = plt.subplots(2, 4, figsize = (int(156.962*4/100), int(85.678*3/100)), gridspec_kw = {'wspace':0, 'hspace':0})
 (fig4, axes4) = plt.subplots(2, 4, figsize = (int(156.962*4/100), int(85.678*3/100)), gridspec_kw = {'wspace':0, 'hspace':0})
 
-(data1, data2, data3, data4, loc_burst_fit)    = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf tremor",
+(data1, data2, data3, data4, loc_burst_fit,
+ hist1, hist2, hist3, hist4)                   = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf tremor",
                                                axes[0, :], axes2[0, :], dir_type, dir_thresh)
-(data5, data6, data7, data8, _)                = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor",
+(data5, data6, data7, data8, _, 
+ hist5, hist6, hist7, hist8)                   = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor",
                                                axes[1, :], axes2[1, :], dir_type, dir_thresh, loc_burst_fit)
 
 dir_type = 1
 dir_thresh = 0.0
-(data9, data10, data11, data12, _)             = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf tremor",
+(data9, data10, data11, data12, _, 
+ hist9, hist10, hist11, hist12)                = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf tremor",
                                                axes3[0, :], axes4[0, :], dir_type, dir_thresh, loc_burst_fit)
-(data13, data14, data15, data16, _)            = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor",
+(data13, data14, data15, data16, _, 
+ hist13, hist14, hist15, hist16)               = main("/mnt/data/Professional/UHN/projects/old/pac_investigation/results/", "/data/2/", "tremor", "hf non tremor",
                                                axes3[1, :], axes4[1, :], dir_type, dir_thresh, loc_burst_fit)
 
 
@@ -267,39 +287,50 @@ data13= np.asarray(data13, dtype = np.float32);
 data14= np.asarray(data14, dtype = np.float32);
 data15= np.asarray(data15, dtype = np.float32);
 data16= np.asarray(data16, dtype = np.float32);
- 
+
 stat_data_21  = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data1,  np.ones((data1.shape[0], 1))), axis = 1)), axis = 0)
-stat_data_23  = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data3,  np.ones((data3.shape[0], 1))), axis = 1)), axis = 0)
 stat_data_24  = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data4,  np.ones((data4.shape[0], 1))), axis = 1)), axis = 0)
-stat_data_25  = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data5,  np.ones((data5.shape[0], 1))), axis = 1)), axis = 0)
 stat_data_26  = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data6,  np.ones((data6.shape[0], 1))), axis = 1)), axis = 0)
-stat_data_27  = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data7,  np.ones((data7.shape[0], 1))), axis = 1)), axis = 0)
 stat_data_28  = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data8,  np.ones((data8.shape[0], 1))), axis = 1)), axis = 0)
-stat_data_29  = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data9,  np.ones((data9.shape[0], 1))), axis = 1)), axis = 0)
+stat_data_25  = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data5,  np.ones((data5.shape[0], 1))), axis = 1)), axis = 0)
 stat_data_210 = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data10, np.ones((data10.shape[0], 1))), axis = 1)), axis = 0)
-stat_data_211 = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data11, np.ones((data11.shape[0], 1))), axis = 1)), axis = 0)
 stat_data_212 = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data12, np.ones((data12.shape[0], 1))), axis = 1)), axis = 0)
-stat_data_213 = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data13, np.ones((data13.shape[0], 1))), axis = 1)), axis = 0)
 stat_data_214 = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data14, np.ones((data14.shape[0], 1))), axis = 1)), axis = 0)
-stat_data_215 = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data15, np.ones((data15.shape[0], 1))), axis = 1)), axis = 0)
 stat_data_216 = np.concatenate((np.concatenate((data2, np.zeros((data2.shape[0], 1))), axis = 1), np.concatenate((data16, np.ones((data16.shape[0], 1))), axis = 1)), axis = 0)
  
 print(dir_type, dir_thresh)
-vals = list()  
-full_stat_data = [stat_data_24, stat_data_26, stat_data_28, stat_data_21, stat_data_25, stat_data_210, stat_data_212, stat_data_214, stat_data_216]
+vals1 = list()  
+vals2 = list()  
+#full_stat_data = [stat_data_12, stat_data_14, stat_data_110, stat_data_112, stat_data_15, stat_data_16, stat_data_18, stat_data_114, stat_data_116]
+full_stat_data = [stat_data_21, stat_data_24, stat_data_210, stat_data_212, stat_data_25, stat_data_26, stat_data_28, stat_data_214, stat_data_216]
 
 for loc_data in full_stat_data:
-    stats = glmm.run(loc_data, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                     "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
+    stats = glmm.run(loc_data, ["pac_score", "shape_score", "patient", "trial", "type"], ["continuous", "continuous", "categorical", "categorical", "categorical"],
+                     "pac_score ~ type + (1|patient) + (1|trial)", "list(pac_score = contr.sum, shape_score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
                      "gaussian")
     stats = np.asarray(stats)
-    print(stats)
-    print(float(stats[2, 0])*len(full_stat_data), "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-    vals.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
+    #print(stats)
+    print(float(stats[2, 0])*len(full_stat_data), "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])), float(stats[3, 0]) + float(stats[3, 1]), float(stats[3, 1]))
+    vals1.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
+
+    stats = glmm.run(loc_data, ["pac_score", "shape_score", "patient", "trial", "type"], ["continuous", "continuous", "categorical", "categorical", "categorical"],
+                     "shape_score ~ type + (1|patient) + (1|trial)", "list(pac_score = contr.sum, shape_score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
+                     "gaussian")
+    stats = np.asarray(stats)
+    #print(stats)
+    print(float(stats[2, 0])*len(full_stat_data), "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])), float(stats[3, 0]) + float(stats[3, 1]), float(stats[3, 1]))
+    vals2.append([(float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), np.abs((float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]) - (float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]))])
+
+    print("\n\n")
 
 plt.figure()
-plt.errorbar(np.arange(0, 15), np.asarray(vals)[:, 0], yerr = np.asarray(vals)[:, 1])
-plt.bar(np.arange(0, 15), np.asarray(vals)[:, 0])
+plt.errorbar(np.arange(0, len(full_stat_data)), np.asarray(vals1)[:, 0], yerr = np.asarray(vals1)[:, 1])
+plt.bar(np.arange(0, len(full_stat_data)), np.asarray(vals1)[:, 0])
+plt.ylim([0, 4.5])
+
+plt.figure()
+plt.errorbar(np.arange(0, len(full_stat_data)), np.asarray(vals2)[:, 0], yerr = np.asarray(vals2)[:, 1])
+plt.bar(np.arange(0, len(full_stat_data)), np.asarray(vals2)[:, 0])
 plt.ylim([0, 4.5])
 
 axes[0, 0].set_title("Highly tremor, mostly burst"); axes2[0, 0].set_title("Highly tremor, mostly burst")

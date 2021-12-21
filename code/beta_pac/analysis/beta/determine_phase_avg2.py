@@ -32,6 +32,7 @@ def get_values(path, subpath, mode, type):
     
     patients = list()
     trials = list()
+    pac_scores = list()
     
     for (f_idx, f_name) in enumerate(meta_info["file"]):
         if (int(meta_info["valid_data"][f_idx]) == 0):
@@ -48,6 +49,7 @@ def get_values(path, subpath, mode, type):
         #print(f_name, data[2])
         
         loc_data = (np.argmin(np.abs(data[1])), np.argmin(np.abs(data[7])), np.argmin(np.abs(data[16])))
+        pac_scores.append([data[2], data[8], data[17]])
         
 #        loc_data = (np.argmax(data[0]), np.argmax(data[3]), np.argmax(data[6]))
         phase_shifts.append(loc_data)
@@ -58,18 +60,20 @@ def get_values(path, subpath, mode, type):
         fit_list0.append(data[1]); fit_list1.append(data[7]); fit_list2.append(data[16])
 
     fit_list0 = np.asarray(fit_list0); fit_list1 = np.asarray(fit_list1); fit_list2 = np.asarray(fit_list2)
+    pac_scores = np.asarray(pac_scores)
        
-    return (np.asarray(phase_shifts), np.asarray(data_list), np.asarray(sin_fit_list), np.asarray(patients), np.asarray(trials))
+    return (np.asarray(phase_shifts), np.asarray(data_list), np.asarray(sin_fit_list), np.asarray(patients), np.asarray(trials), pac_scores)
 
 import finn.cleansing.outlier_removal as out_rem
 
 def main(path, subpath, mode, type, axes, ideal_ref_slope = None):
-    (values, data, fit, patients, trials) = get_values(path, subpath, mode, type)
+    (values, data, fit, patients, trials, pac_scores) = get_values(path, subpath, mode, type)
     patients1 = np.copy(patients); patients2 = np.copy(patients)
     trials1 = np.copy(trials); trials2 = np.copy(trials)
     
     loc_data1 = data[:, 1, :]; loc_fit1 = fit[:, 1, :]
     loc_data2 = data[:, 2, :]; loc_fit2 = fit[:, 2, :]
+    pac_scores1 = np.copy(pac_scores[:, 1]); pac_scores2 = np.copy(pac_scores[:, 2])
     
     pre = (loc_data1.shape[0], loc_data2.shape[0])
     
@@ -152,6 +156,9 @@ def main(path, subpath, mode, type, axes, ideal_ref_slope = None):
     sq_error_1 = np.sum(np.power((loc_data1 - ideal_ref_slope), 2), axis = 1)
     sq_error_2 = np.sum(np.power((loc_data2 - ideal_ref_slope), 2), axis = 1)
     
+    sq_error_1 = np.sum(np.power((loc_data1 - result1.best_fit), 2), axis = 1)
+    sq_error_2 = np.sum(np.power((loc_data2 - result2.best_fit), 2), axis = 1)
+    
 #===============================================================================
 #     std_dev = 1.85
 #     print(loc_data1.shape)
@@ -191,8 +198,8 @@ def main(path, subpath, mode, type, axes, ideal_ref_slope = None):
     print("burst", np.mean(values[:, 1]), np.sqrt(np.var(values[:, 1])))
     print("non burst", np.mean(values[:, 2]), np.sqrt(np.var(values[:, 2])))
     
-    return (np.concatenate((np.expand_dims(sq_error_1, axis = 1), np.expand_dims(patients1, axis = 1), np.expand_dims(trials1, axis = 1)), axis = 1),
-            np.concatenate((np.expand_dims(sq_error_2, axis = 1), np.expand_dims(patients2, axis = 1), np.expand_dims(trials2, axis = 1)), axis = 1), 
+    return (np.concatenate((np.expand_dims(pac_scores1, axis = 1), np.expand_dims(sq_error_1, axis = 1), np.expand_dims(patients1, axis = 1), np.expand_dims(trials1, axis = 1)), axis = 1),
+            np.concatenate((np.expand_dims(pac_scores2, axis = 1), np.expand_dims(sq_error_2, axis = 1), np.expand_dims(patients2, axis = 1), np.expand_dims(trials2, axis = 1)), axis = 1), 
             ideal_ref_slope)
     
     return (np.expand_dims(sq_error_1, axis = 1), np.expand_dims(sq_error_2, axis = 1),
@@ -211,24 +218,24 @@ stat_data_12 = np.concatenate((np.concatenate((data1, np.zeros((data1.shape[0], 
 stat_data_13 = np.concatenate((np.concatenate((data1, np.zeros((data1.shape[0], 1))), axis = 1), np.concatenate((data3, np.ones((data3.shape[0], 1))), axis = 1)), axis = 0)
 stat_data_14 = np.concatenate((np.concatenate((data1, np.zeros((data1.shape[0], 1))), axis = 1), np.concatenate((data4, np.ones((data4.shape[0], 1))), axis = 1)), axis = 0)
  
-stats = glmm.run(stat_data_12, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
+stats = glmm.run(stat_data_12, ["pac_score", "shape_score", "patient", "trial", "type"], ["continuous", "continuous", "categorical", "categorical", "categorical"],
+                 "pac_score ~ type + (1|patient) + (1|trial)", "list(pac_score = contr.sum, shape_score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
                  "gaussian")
 stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-stats = glmm.run(stat_data_13, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
+#print(stats)
+print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])), float(stats[3, 0]) + float(stats[3, 1]), float(stats[3, 1]))
+stats = glmm.run(stat_data_13, ["pac_score", "shape_score", "patient", "trial", "type"], ["continuous", "continuous", "categorical", "categorical", "categorical"],
+                 "pac_score ~ type + (1|patient) + (1|trial)", "list(pac_score = contr.sum, shape_score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
                  "gaussian")
 stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-stats = glmm.run(stat_data_14, ["score", "patient", "trial", "type"], ["continuous", "categorical", "categorical", "categorical"],
-                 "score ~ type + (1|patient) + (1|trial)", "list(score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
+#print(stats)
+print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])), float(stats[3, 0]) + float(stats[3, 1]), float(stats[3, 1]))
+stats = glmm.run(stat_data_14, ["pac_score", "shape_score", "patient", "trial", "type"], ["continuous", "continuous", "categorical", "categorical", "categorical"],
+                 "pac_score ~ type + (1|patient) + (1|trial)", "list(pac_score = contr.sum, shape_score = contr.sum, patient = contr.sum, trial = contr.sum, type = contr.sum)",
                  "gaussian")
 stats = np.asarray(stats)
-print(stats)
-print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
+#print(stats)
+print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])), float(stats[3, 0]) + float(stats[3, 1]), float(stats[3, 1]))
 
 #---------------------------------- stats = scipy.stats.ttest_1samp(data2, 0)[1]
 # print(stats, np.mean(data2), np.mean(data2) - np.var(data2), np.mean(data2) + np.var(data2))

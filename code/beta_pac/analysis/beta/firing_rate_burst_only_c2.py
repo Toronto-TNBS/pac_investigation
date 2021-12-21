@@ -39,6 +39,10 @@ def main():
     for idx_list_idx in range(len(idx_lists_burst)):
         data.append(list())
         for row_idx in range(len(pre_data)):
+    
+            if (int(float(pre_data[row_idx, spikes_w])) == -1):
+                continue
+            
             if (int(pre_data[row_idx, valid_idx]) == 0):
                 continue
             
@@ -62,9 +66,9 @@ def main():
 
     data = np.asarray(data, dtype = np.float32)
     
-    print(data.shape)
-    data = orem.run(data, data[0, :, 0], 2.5, 5, 1)
-    print(data.shape)
+    #--------------------------------------------------------- print(data.shape)
+    #--------------------------- data = orem.run(data, data[0, :, 0], 1.5, 5, 1)
+    #--------------------------------------------------------- print(data.shape)
     
     formulas = ["target_value ~ lf + (1|patient_id) + (1|trial)", 
                 "target_value ~ hf + (1|patient_id) + (1|trial)",]
@@ -81,6 +85,7 @@ def main():
     print("beta")
     for (formula_idx, formula) in enumerate(formulas):
         for data_idx in range(len(data)):
+            
             stats = glmm.run(data[data_idx], labels[data_idx], factor_type, formula, contrasts, data_type)
             print(np.asarray(stats), float(np.asarray(stats)[2, 0])*6)
             

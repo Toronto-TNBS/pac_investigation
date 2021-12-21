@@ -1296,8 +1296,8 @@ def main(mode = "power", overwrite = False, visualize = False):
 #main(["power", "overall pac", "specific pac", "acc pac"], overwrite = False, visualize = True)
 
 #main(["power"], overwrite = True, visualize = True)
-main(["overall pac"], overwrite = True, visualize = True)
-#main(["specific pac"], overwrite = True, visualize = True)
+#main(["overall pac"], overwrite = True, visualize = True)
+main(["specific pac"], overwrite = True, visualize = True)
 #main(["cnt_burst"], overwrite = True, visualize = False)
 #main(["dac"], overwrite = False, visualize = True)
 #main(["visualize"], overwrite = False, visualize = True)

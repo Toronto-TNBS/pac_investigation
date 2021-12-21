@@ -4,6 +4,11 @@
 *.odt
 *.odt#
 *.npy
+paper/
+paper (copy 1)/
+data (copy 1)/
+results (copy 1)/
+results (copy 2)/
 
 results/
 *.pdf

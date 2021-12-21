@@ -34,8 +34,8 @@ def main():
         meta_data[meta_row_idx, burst_auto_idx] = hf_burst_data[row_idx, 1]
         meta_data[meta_row_idx, non_burst_auto_idx] = hf_non_burst_data[row_idx, 1]
     
-    meta_file.modify_sheet_from_array("beta", meta_data, meta_labels)
-    meta_file.write_file()
+    #--------- meta_file.modify_sheet_from_array("beta", meta_data, meta_labels)
+    #---------------------------------------------------- meta_file.write_file()
     
     visualization(lfp_data, hf_default_data, txt_data)
 
