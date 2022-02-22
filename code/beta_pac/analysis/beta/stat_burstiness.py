@@ -20,8 +20,6 @@ import matplotlib
 matplotlib.use("Qt5agg")
 import matplotlib.pyplot as plt
 
-
-
 def get_data(stat_data, data_type):
     meta_file = methods.data_io.ods.ods_data("../../../../data/meta.ods")
     if (data_type == 0):
@@ -69,8 +67,7 @@ def get_data(stat_data, data_type):
     
     print("A")
 
-
-def main(overwrite = False):    
+def main(overwrite = False):
     if (overwrite == True or os.path.exists("stat_data.pkl") == False):
         stat_data = list()
         get_data(stat_data, 0)#beta
@@ -86,25 +83,41 @@ def main(overwrite = False):
     contrasts = "list(spike_ratio = contr.sum, firing_rate = contr.sum, patient = contr.sum, trial = contr.sum, peak_type = contr.sum, data_type = contr.sum)"
     
     formula = "spike_ratio ~ peak_type + (1|patient) + (1|trial)"
-    loc_stat_data = stat_data[np.argwhere(stat_data[:, 5] == 0).squeeze(), :] # beta only
-    stats = glmm.run(loc_stat_data, factor_names, factor_types, formula, contrasts, "gaussian")
+    loc_data = np.copy(stat_data)
+    loc_data = loc_data[np.argwhere(loc_data[:, 0] != 0).squeeze(), :]
+    loc_data = loc_data[np.argwhere(loc_data[:, 5] == 0).squeeze(), :] # beta only
+    stats = glmm.run(loc_data, factor_names, factor_types, formula, contrasts, "gaussian")
     stats = np.asarray(stats)
     print(stats)
-    print(float(stats[2, 0])*5, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
+    print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
 
-    formula = "spike_ratio ~ data_type + (1|patient) + (1|trial)"
-    loc_stat_data = stat_data[np.argwhere(stat_data[:, 4] == 1).squeeze(), :] # strong only
-    stats = glmm.run(loc_stat_data, factor_names, factor_types, formula, contrasts, "gaussian")
+    formula = "spike_ratio ~ peak_type + (1|patient) + (1|trial)"
+    loc_data = np.copy(stat_data)
+    #loc_data[np.argwhere(loc_data[:, 0] != 0).squeeze(), 0] = 1
+    loc_data = loc_data[np.argwhere(loc_data[:, 5] == 0).squeeze(), :] # beta only
+    stats = glmm.run(loc_data, factor_names, factor_types, formula, contrasts, "gaussian")
     stats = np.asarray(stats)
     print(stats)
-    print(float(stats[2, 0])*5, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
+    print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
 
     formula = "firing_rate ~ peak_type + (1|patient) + (1|trial)"
-    loc_stat_data = stat_data[np.argwhere(stat_data[:, 5] == 0).squeeze(), :] # beta only
-    stats = glmm.run(loc_stat_data, factor_names, factor_types, formula, contrasts, "gaussian")
+    loc_data = np.copy(stat_data)
+    loc_data = loc_data[np.argwhere(loc_data[:, 5] == 0).squeeze(), :] # beta only
+    stats = glmm.run(loc_data, factor_names, factor_types, formula, contrasts, "gaussian")
     stats = np.asarray(stats)
     print(stats)
-    print(float(stats[2, 0])*5, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
+    print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
+
+    print("\n\n")
+    formula = "spike_ratio ~ data_type + (1|patient) + (1|trial)"
+    loc_data = np.copy(stat_data)
+    loc_data = loc_data[np.argwhere(loc_data[:, 0] != 0).squeeze(), :]
+    loc_data = loc_data[np.argwhere(loc_data[:, 4] == 1).squeeze(), :] # strong only
+    stats = glmm.run(loc_data, factor_names, factor_types, formula, contrasts, "gaussian")
+    stats = np.asarray(stats)
+    print(stats)
+    print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
+
 
 main(overwrite = False)
 

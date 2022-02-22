@@ -457,6 +457,10 @@ def plot(data, fs, peak_spread, peak_thresh,
     
     start = int(1 * fs)
     end = int(2.5 * fs)
+    end2 = int(11 * fs)
+    
+    start = int((1+5+5) * fs)
+    end = int((1+10+5) * fs)
     
     burst_data = np.copy(hpf_data)
     burst_data[np.argwhere(binarized_data != 1).squeeze()] = np.nan
@@ -472,6 +476,9 @@ def plot(data, fs, peak_spread, peak_thresh,
     axes[1].set_ylim((-2.5, 2.5))
     axes[2].set_ylim((-2.5, 2.5))
     
+    plt.figure()
+    plt.plot(hpf_data)
+    
     (burst_hf_data, non_burst_hf_data) = preprocess_data(np.copy(data), fs, peak_spread, peak_thresh, mode = "gaussian")
     hpf_data = np.abs(scipy.signal.hilbert(hpf_data))
     
@@ -481,6 +488,9 @@ def plot(data, fs, peak_spread, peak_thresh,
     axes[1].plot(scipy.signal.welch(hpf_data, fs, window = "hanning", nperseg = int(fs), noverlap = int(fs/2), nfft = int(fs), detrend = False, return_onesided = True)[1][2:45], color = "gray", zorder = 0)
     axes[2].plot(scipy.signal.welch(non_burst_hf_data, fs, window = "hanning", nperseg = int(fs), noverlap = int(fs/2), nfft = int(fs), detrend = False, return_onesided = True)[1][2:45], color = "black", zorder = 1)
     axes[2].plot(scipy.signal.welch(hpf_data, fs, window = "hanning", nperseg = int(fs), noverlap = int(fs/2), nfft = int(fs), detrend = False, return_onesided = True)[1][2:45], color = "gray", zorder = 0)
+    
+    plt.figure()
+    plt.plot(data[start:end])
     
     plt.show(block = True)
 
@@ -1178,7 +1188,7 @@ def get_phase_data(data, fs, peak_spread = 1.5, peak_thresh = 1.1, phase_window_
     np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/burst_type_1.npy", burst_type_1)
     np.save("/mnt/data/Professional/UHN/pac_investigation/results/beta/pre/" + file + "/burst_type_2.npy", burst_type_2)
 
-import analysis.beta.to_finn as tf
+#import analysis.beta.to_finn as tf
 import lmfit
 
 def absolute_pac(data, fs, peak_spread, peak_thresh,
@@ -1224,8 +1234,13 @@ def main(mode = "power", overwrite = False, visualize = False):
         if (file == ""):
             continue
         
-        #------------ if (file != "2622_s1_922-BETA" and file != "2623-s3-666"):
-            #---------------------------------------------------------- continue
+        #=======================================================================
+        # if (file != "2622_s1_922-BETA" and file != "2623-s3-666"):
+        #     continue
+        #=======================================================================
+        
+        if (file != "3304_tbd_s1_138" and "2541_s1_908" not in file):
+            continue
         
         # if (file != "2760_s2_310b-BETA-in-and-out" and file != "2559_s2_664-BETA"):
             #---------------------------------------------------------- continue
@@ -1418,11 +1433,11 @@ def main(mode = "power", overwrite = False, visualize = False):
 #===============================================================================
 
 #main(["power"], overwrite = True, visualize = True)
-main(["overall pac"], overwrite = True, visualize = True)
+#main(["overall pac"], overwrite = True, visualize = True)
 #main(["specific pac"], overwrite = True, visualize = True)
 #main(["cnt_burst"], overwrite = True, visualize = True)
 #main(["dac"], overwrite = True, visualize = True)
-#main(["plot"], overwrite = True, visualize = True)
+main(["plot"], overwrite = True, visualize = True)
 
 #main(["power"], overwrite = True, visualize = True)
 

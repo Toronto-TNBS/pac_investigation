@@ -151,12 +151,11 @@ def plot_hf_lf_components(data, fs_data01, lf_min_f, lf_max_f, hf_min_f, hf_max_
         burst_tremor_strength = np.log(np.average(burst_hf_data_psd[bin_hf_min_f:bin_hf_max_f]) / np.average([np.average(burst_hf_data_psd[ref_left_bin_hf_min_f:left_ref_bin_hf_max_f]), np.average(burst_hf_data_psd[ref_right_bin_hf_min_f:right_ref_bin_hf_max_f])]))
         burst_lf_tremor_strength = np.log(np.average(burst_lpf_psd[bin_lf_min_f:bin_lf_max_f]) / np.average([np.average(burst_lpf_psd[ref_left_bin_lf_min_f:left_ref_bin_lf_max_f]), np.average(burst_lpf_psd[ref_right_bin_lf_min_f:right_ref_bin_lf_max_f])]))
     if (np.sum(binarized_data == -1) == 0):
-        non_burst_tremor_strength = np.log(np.average(non_burst_hf_data_psd[bin_hf_min_f:bin_hf_max_f]) / np.average([np.average(non_burst_hf_data_psd[ref_left_bin_hf_min_f:left_ref_bin_hf_max_f]), np.average(non_burst_hf_data_psd[ref_right_bin_hf_min_f:right_ref_bin_hf_max_f])]))
-        non_burst_lf_tremor_strength = np.log(np.average(non_burst_lpf_psd[bin_lf_min_f:bin_lf_max_f]) / np.average([np.average(non_burst_lpf_psd[ref_left_bin_lf_min_f:left_ref_bin_lf_max_f]), np.average(non_burst_lpf_psd[ref_right_bin_lf_min_f:right_ref_bin_lf_max_f])]))
-    else:
         non_burst_tremor_strength = -1
         non_burst_lf_tremor_strength = -1
-        
+    else:
+        non_burst_tremor_strength = np.log(np.average(non_burst_hf_data_psd[bin_hf_min_f:bin_hf_max_f]) / np.average([np.average(non_burst_hf_data_psd[ref_left_bin_hf_min_f:left_ref_bin_hf_max_f]), np.average(non_burst_hf_data_psd[ref_right_bin_hf_min_f:right_ref_bin_hf_max_f])]))
+        non_burst_lf_tremor_strength = np.log(np.average(non_burst_lpf_psd[bin_lf_min_f:bin_lf_max_f]) / np.average([np.average(non_burst_lpf_psd[ref_left_bin_lf_min_f:left_ref_bin_lf_max_f]), np.average(non_burst_lpf_psd[ref_right_bin_lf_min_f:right_ref_bin_lf_max_f])])) 
     if (visualize):
         (fig, axes) = plt.subplots(5, 2)
         
@@ -1018,6 +1017,10 @@ def plot(data, fs, peak_spread, peak_thresh, start, end,
     start = int(start * fs)
     end = int(end * fs)
     
+    print(fs)
+    start = int(5 * fs)
+    end = int(10 * fs)
+    
     burst_data = np.copy(hpf_data)
     burst_data[np.argwhere(binarized_data != 1).squeeze()] = np.nan
     non_burst_data = np.copy(hpf_data)
@@ -1049,6 +1052,9 @@ def plot(data, fs, peak_spread, peak_thresh, start, end,
     axes[1].plot(scipy.signal.welch(hpf_data, fs, window = "hanning", nperseg = int(fs), noverlap = int(fs/2), nfft = int(fs), detrend = False, return_onesided = True)[1][2:10], color = "gray", zorder = 0)
     axes[2].plot(scipy.signal.welch(non_burst_hf_data, fs, window = "hanning", nperseg = int(fs), noverlap = int(fs/2), nfft = int(fs), detrend = False, return_onesided = True)[1][2:10], color = "black", zorder = 1)
     axes[2].plot(scipy.signal.welch(hpf_data, fs, window = "hanning", nperseg = int(fs), noverlap = int(fs/2), nfft = int(fs), detrend = False, return_onesided = True)[1][2:10], color = "gray", zorder = 0)
+    
+    plt.figure()
+    plt.plot(data[start:int(fs*10+start)])
     
     plt.show(block = True)
     
@@ -1111,13 +1117,16 @@ def main(mode = "power", overwrite = False, visualize = False):
         if (file == ""):
             continue
             
-        #=======================================================================
-        # if (file != "639-2376" and file != "655-996-NOT-TREMOR"):
-        #     continue
-        #=======================================================================
+        if (file != "639-2376" and file != "655-996-NOT-TREMOR"):
+            continue
         
         if (meta_data["valid_data"][file_idx] == 0):
             continue
+        
+        #=======================================================================
+        # if ("668-518" not in file):
+        #     continue
+        #=======================================================================
         
         print(file)
         
@@ -1297,10 +1306,10 @@ def main(mode = "power", overwrite = False, visualize = False):
 
 #main(["power"], overwrite = True, visualize = True)
 #main(["overall pac"], overwrite = True, visualize = True)
-main(["specific pac"], overwrite = True, visualize = True)
+#main(["specific pac"], overwrite = True, visualize = True)
 #main(["cnt_burst"], overwrite = True, visualize = False)
 #main(["dac"], overwrite = False, visualize = True)
-#main(["visualize"], overwrite = False, visualize = True)
+main(["plot"], overwrite = False, visualize = True)
 
 
 

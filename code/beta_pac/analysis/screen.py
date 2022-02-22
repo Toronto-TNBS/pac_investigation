@@ -36,6 +36,9 @@ def main(mode = "beta"):
         if (int(meta_data["valid_data"][file_idx]) == 0):
             continue
         
+        if ("3304_tbd_s1_138" not in file):
+            continue
+        
         print(file)
         
         file_hdr = pickle.load(open(in_path+file+".txt_conv_hdr.pkl", "rb"))
