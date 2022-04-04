@@ -9,6 +9,8 @@ paper (copy 1)/
 data (copy 1)/
 results (copy 1)/
 results (copy 2)/
+submission/
+hypothesis_count.ods
 
 results/
 *.pdf

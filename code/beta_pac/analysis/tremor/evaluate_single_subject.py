@@ -1120,6 +1120,9 @@ def main(mode = "power", overwrite = False, visualize = False):
         if (file != "639-2376" and file != "655-996-NOT-TREMOR"):
             continue
         
+        if (file != "639-2376"):
+            continue
+        
         if (meta_data["valid_data"][file_idx] == 0):
             continue
         
@@ -1309,9 +1312,10 @@ def main(mode = "power", overwrite = False, visualize = False):
 #main(["specific pac"], overwrite = True, visualize = True)
 #main(["cnt_burst"], overwrite = True, visualize = False)
 #main(["dac"], overwrite = False, visualize = True)
-main(["plot"], overwrite = False, visualize = True)
+#main(["plot"], overwrite = False, visualize = True)
 
 
+main(["specific pac"], overwrite = True, visualize = True)
 
 #main(["power"], overwrite = True, visualize = True)
 

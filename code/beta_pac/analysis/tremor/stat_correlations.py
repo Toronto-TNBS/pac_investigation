@@ -58,19 +58,16 @@ def main():
             continue
         
         loc_data = np.copy(data)
-        print(loc_data.shape)
         loc_data = loc_data[np.argwhere(loc_data[:, 3] > -1.5).squeeze(), :]
-        print(loc_data.shape)
         if ("hf_pow" in formula):
             loc_data = loc_data[np.argwhere(loc_data[:, 2] > -2).squeeze(), :]
         if ("hf_burst_pow" in formula):
             loc_data = loc_data[np.argwhere(loc_data[:, 3] != -1).squeeze(), :]
         if ("hf_non_burst_pow" in formula):
             loc_data = loc_data[np.argwhere(loc_data[:, 4] > -2).squeeze(), :]
-        print(loc_data.shape)
             
         stats = np.asarray(glmm.run(loc_data, labels, factor_type, formula, contrasts, data_type)[:-1], dtype = np.float32)
-        print(formula, float(stats[2, 0])*len(formulas), "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])), float(stats[3, 0]) + float(stats[3, 1]), float(stats[3, 1]))
+        print(float(stats[2, 0])*1, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])), float(stats[3, 0]) + float(stats[3, 1]), float(stats[3, 1]))
 
 
         plt.figure()

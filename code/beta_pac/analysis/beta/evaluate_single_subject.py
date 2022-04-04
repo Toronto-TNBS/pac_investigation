@@ -544,8 +544,6 @@ def calculate_spectograms_inner(data, window_width, fs,
     
        
     loc_hf_data = ff.fir(np.copy(data), 300, None, filter_step_width, fs)
-    #loc_lf_data = ff.fir(np.copy(data), filt_low, filt_high, filter_step_width, fs)
-    
     (loc_burst_hf_data, loc_non_burst_hf_data) = preprocess_data(loc_hf_data, fs, peak_spread, peak_thresh)
 
     (bins, loc_lf_psd) = scipy.signal.welch(data, fs, window = "hann", nperseg = fs, noverlap = int(fs/2), nfft = fs, detrend = False, return_onesided = True)
@@ -1248,6 +1246,9 @@ def main(mode = "power", overwrite = False, visualize = False):
         if (int(meta_data["valid_data"][file_idx]) == 0 or int(meta_data["process data"][file_idx]) == 0):
             continue
         
+        if (file != "639-2376"):
+            continue
+        
         print("file", file)
         
         if (overwrite == True):
@@ -1437,7 +1438,9 @@ def main(mode = "power", overwrite = False, visualize = False):
 #main(["specific pac"], overwrite = True, visualize = True)
 #main(["cnt_burst"], overwrite = True, visualize = True)
 #main(["dac"], overwrite = True, visualize = True)
-main(["plot"], overwrite = True, visualize = True)
+#main(["plot"], overwrite = True, visualize = True)
+
+main(["specific pac"], overwrite = True, visualize = True)
 
 #main(["power"], overwrite = True, visualize = True)
 

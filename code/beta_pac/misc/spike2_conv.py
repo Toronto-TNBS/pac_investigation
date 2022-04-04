@@ -38,24 +38,6 @@ def read_file_info(file):
     file_info["comment4"]           = file[(347):(427)].view(dtype = "S80")[0]
     file_info["comment5"]           = file[(427):(507)].view(dtype = "S80")[0]
     
-    
-    #===========================================================================
-    # file_info["chan_size"] = np.frombuffer(file.read(2), dtype = "<i2")[0]
-    # file_info["extra_data"] = np.frombuffer(file.read(2), dtype = "<i2")[0]
-    # file_info["buffersize"] = np.frombuffer(file.read(2), dtype = "<i2")[0]
-    # file_info["os_format"] = np.frombuffer(file.read(2), dtype = "<i2")[0]
-    # file_info["max_ftime"] = np.frombuffer(file.read(4), dtype = "<i4")[0]
-    # file_info["dtime_base"] = np.frombuffer(file.read(8), dtype = "f8")[0]
-    # file_info["datetime_detail"] = np.frombuffer(file.read(1), dtype = "u1")[0]
-    # file_info["datetime_year"] = np.frombuffer(file.read(2), dtype = "<i2")[0]
-    # file_info["pad"] = str(file.read(52), encoding = "iso-8859-1")
-    # file_info["comment1"] = str(file.read(80), encoding = "iso-8859-1")
-    # file_info["comment2"] = str(file.read(80), encoding = "iso-8859-1")
-    # file_info["comment3"] = str(file.read(80), encoding = "iso-8859-1")
-    # file_info["comment4"] = str(file.read(80), encoding = "iso-8859-1")
-    # file_info["comment5"] = str(file.read(80), encoding = "iso-8859-1")
-    #===========================================================================
-    
     return file_info
 
 def read_channel_header(file, file_info):
@@ -89,9 +71,15 @@ def read_channel_header(file, file_info):
         ch_info["unused1"]          = file[(loc_start + 123):(loc_start + 124)].view(dtype = "<i1")[0]
         ch_info["scale"]            = file[(loc_start + 124):(loc_start + 128)].view(dtype =  "f4")[0]
         ch_info["offset"]           = file[(loc_start + 128):(loc_start + 132)].view(dtype =  "f4")[0]
-        ch_info["unit"]             = file[(loc_start + 132):(loc_start + 138)].view(dtype =  "S6")[0]
+        ch_info["unit"]             = file[(loc_start + 132):(loc_start + 138)].view(dtype =  "S6")[0]        
+        ch_info["divide"]           = file[(loc_start + 138):(loc_start + 140)].view(dtype =  "i2")[0]
+        
         ch_info["idx"]              = ch_idx
-        ch_info["fs"]               = 1/(ch_info["l_chan_dvd"]*file_info["dtime_base"]*file_info["us_per_time"])
+        
+        if (ch_info['kind'] in [1, 6, 7, 9] and file_info['system_id'] < 6):
+            ch_info["fs"]               = 1/(int(ch_info['divide'])*file_info['us_per_time']*file_info['time_per_adc'] * 1e-6)
+        else:
+            ch_info["fs"]               = 1/(ch_info["l_chan_dvd"]*file_info["dtime_base"]*file_info["us_per_time"])
         
         ch_infos.append(ch_info)
     
@@ -100,7 +88,6 @@ def read_channel_header(file, file_info):
     return (file_info, ch_infos)
 
 def read_data(file, file_info, ch_infos):
-    
     ch_data = list()
     for ch_idx in range(file_info["channels"]):
         if (ch_infos[ch_idx]["firstblock"] == -1):
@@ -115,9 +102,12 @@ def read_data(file, file_info, ch_infos):
                 
                 start_block = block_info["succ_block"]
         
-        fs = 1/(ch_infos[-1]["l_chan_dvd"]*file_info["dtime_base"]*file_info["us_per_time"])
-        spike_data = np.zeros((int(file_info["max_ftime"] * file_info["dtime_base"] * fs,)))
         if (ch_infos[ch_idx]["kind"] == 6):
+            if (file_info['system_id'] <= 5):
+                spike_data = np.zeros((int(file_info["max_ftime"] * file_info['us_per_time'] * 1e-6 * ch_infos[ch_idx]["fs"])))
+            else:
+                spike_data = np.zeros((int(file_info["max_ftime"] * file_info["dtime_base"] * ch_infos[ch_idx]["fs"])))
+            
             for _ in range(ch_infos[ch_idx]["blocks"]):
                 block_info = read_block_hdr(file, start_block)
                 #Header is 8 bytes [4 startbytes, 4 pattern_id_bytes]
@@ -150,8 +140,6 @@ def read_analog_signal(file, start_block, block_info):
     return file[(start_block + 20):(start_block + int(block_info["items"] * 2 + 20))].view(dtype = "i2")
 
 def read_wavmks(start_block, ch_infos, ch_idx, block_info, file, file_info, spike_data):
-    fs = 1/(ch_infos[-1]["l_chan_dvd"]*file_info["dtime_base"]*file_info["us_per_time"])
-    
     loc_start = start_block + 20
     
     wave_info = dict()
@@ -160,9 +148,12 @@ def read_wavmks(start_block, ch_infos, ch_idx, block_info, file, file_info, spik
     wave_info["wavmk_sz"] = wave_info["header_sz"] + wave_info["spike_sz"]
     
     for spike_idx in range(block_info["items"]):
-        
+                
         start = loc_start + 0 + int(spike_idx * (wave_info["wavmk_sz"]))
-        start_time = file[start:(start + 4)].view(dtype = "<u4")[0] * file_info["dtime_base"] * fs
+        if (file_info['system_id'] <= 5):
+            start_time = file[start:(start + 4)].view(dtype = "<u4")[0] * file_info['us_per_time'] * 1e-6 * ch_infos[ch_idx]["fs"]
+        else:
+            start_time = file[start:(start + 4)].view(dtype = "<u4")[0] * file_info["dtime_base"] * ch_infos[ch_idx]["fs"]
                 
         start = loc_start + wave_info["header_sz"] + int(spike_idx * (wave_info["wavmk_sz"]))
         spike = file[start:(start + wave_info["spike_sz"])].view(dtype = "<i2")
@@ -196,5 +187,5 @@ def demo():
         
     plt.show(block = True)
 
-demo()
+#demo()
 #print("Terminated successfully")

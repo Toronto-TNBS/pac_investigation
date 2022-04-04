@@ -36,8 +36,8 @@ def main(mode = "beta"):
         if (int(meta_data["valid_data"][file_idx]) == 0):
             continue
         
-        if ("3304_tbd_s1_138" not in file):
-            continue
+        #----------------------------------- if ("3304_tbd_s1_138" not in file):
+            #---------------------------------------------------------- continue
         
         print(file)
         

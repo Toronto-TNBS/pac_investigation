@@ -20,8 +20,6 @@ import matplotlib
 matplotlib.use("Qt5agg")
 import matplotlib.pyplot as plt
 
-
-
 def get_data(stat_data, data_type):
     meta_file = methods.data_io.ods.ods_data("../../../../data/meta.ods")
     if (data_type == 0):
@@ -62,11 +60,14 @@ def get_data(stat_data, data_type):
         loc_data = [ratio_of_spikes_within_bursts, firing_rate, meta_data["patient_id"][file_idx], meta_data["trial"][file_idx], meta_data["hf auto"][file_idx], data_type]
         
         stat_data.append(loc_data)
+        
+        #---------------------------------------------- plt.plot(binarized_data)
+        #------------------------------------------------------ plt.plot(spikes)
+        #------------------------------------------------ plt.show(block = True)
     
     print("A")
 
-
-def main(overwrite = False):    
+def main(overwrite = False):
     if (overwrite == True or os.path.exists("stat_data.pkl") == False):
         stat_data = list()
         get_data(stat_data, 0)#beta
@@ -83,30 +84,19 @@ def main(overwrite = False):
     
     formula = "spike_ratio ~ peak_type + (1|patient) + (1|trial)"
     loc_data = np.copy(stat_data)
-    loc_data = loc_data[np.argwhere(loc_data[:, 0] != 0).squeeze(), :]
-    loc_data = loc_data[np.argwhere(loc_data[:, 5] == 1).squeeze(), :] # tremor only
+    loc_data = loc_data[np.argwhere(loc_data[:, 5] == 0).squeeze(), :] # beta only
     stats = glmm.run(loc_data, factor_names, factor_types, formula, contrasts, "gaussian")
     stats = np.asarray(stats)
     print(stats)
-    print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-
-    formula = "spike_ratio ~ peak_type + (1|patient) + (1|trial)"
-    loc_data = np.copy(stat_data)
-    loc_data[np.argwhere(loc_data[:, 0] != 0).squeeze(), 0] = 1
-    loc_data = loc_data[np.argwhere(loc_data[:, 5] == 1).squeeze(), :] # tremor only
-    stats = glmm.run(loc_data, factor_names, factor_types, formula, contrasts, "gaussian")
-    stats = np.asarray(stats)
-    print(stats)
-    print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
+    print(float(stats[2, 0])*1, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
 
     formula = "firing_rate ~ peak_type + (1|patient) + (1|trial)"
     loc_data = np.copy(stat_data)
-    loc_data = loc_data[np.argwhere(loc_data[:, 5] == 1).squeeze(), :] # tremor only
+    loc_data = loc_data[np.argwhere(loc_data[:, 5] == 0).squeeze(), :] # beta only
     stats = glmm.run(loc_data, factor_names, factor_types, formula, contrasts, "gaussian")
     stats = np.asarray(stats)
     print(stats)
-    print(float(stats[2, 0])*3, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
-
+    print(float(stats[2, 0])*1, "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])))
 
 main(overwrite = False)
 

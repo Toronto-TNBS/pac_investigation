@@ -47,6 +47,9 @@ def main():
     
     formulas = ["spike_freq ~ hf_pow + (1|patient_id) + (1|trial)", "spike_freq ~ hf_burst_pow + (1|patient_id) + (1|trial)", "spike_freq ~ hf_non_burst_pow + (1|patient_id) + (1|trial)",
                 "lf_pow ~ hf_pow + (1|patient_id) + (1|trial)", "lf_pow ~ hf_burst_pow + (1|patient_id) + (1|trial)", "lf_pow ~ hf_non_burst_pow + (1|patient_id) + (1|trial)",]
+    
+    hypothesis_count = 26
+    
     labels = ["spike_freq", "lf_pow", "hf_pow", "hf_burst_pow", "hf_non_burst_pow", "patient_id", "trial"]
     factor_type = ["continuous", "continuous", "continuous", "continuous", "continuous", "categorical", "categorical"] 
     contrasts = "list(spike_freq = contr.sum, lf_pow = contr.sum, hf_pow = contr.sum, hf_burst_pow = contr.sum, hf_non_burst_pow = contr.sum, patient_id = contr.sum, trial = contr.sum)"
@@ -63,7 +66,7 @@ def main():
         if ("hf_burst_pow" in formula):
             loc_data = loc_data[np.argwhere(loc_data[:, 3] != -1).squeeze(), :]
         stats = np.asarray(glmm.run(loc_data, labels, factor_type, formula, contrasts, data_type)[:-1], dtype = np.float32)
-        print(float(stats[2, 0])*len(formulas), "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])), float(stats[3, 0]) + float(stats[3, 1]), float(stats[3, 1]))
+        print(float(stats[2, 0]), "%05.03f, %05.03f, %05.03f" % ((float(stats[3, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) - float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1]), (float(stats[3, 0]) + float(stats[4, 0]) + float(stats[3, 1]))/float(stats[3, 1])), float(stats[3, 0]) + float(stats[3, 1]), float(stats[3, 1]))
 
 
         plt.figure()
